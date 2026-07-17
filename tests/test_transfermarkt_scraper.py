@@ -1,12 +1,12 @@
 import unittest
 from unittest.mock import patch
+
 from bs4 import BeautifulSoup
 
 from scraper.transfermarkt import TransfermarktScraper
 
 
 class TransfermarktScraperTest(unittest.TestCase):
-
     def test_get_players_extracts_player_links_from_squad_page(self):
         scraper = TransfermarktScraper()
 
@@ -29,7 +29,10 @@ class TransfermarktScraperTest(unittest.TestCase):
                 )
             return BeautifulSoup(roster_html, "lxml")
 
-        with patch.object(scraper, "get_club_roster_urls", return_value=["/club/roster"]), patch.object(scraper, "parse_page", side_effect=fake_parse_page):
+        with (
+            patch.object(scraper, "get_club_roster_urls", return_value=["/club/roster"]),
+            patch.object(scraper, "parse_page", side_effect=fake_parse_page),
+        ):
             players = scraper.get_players()
 
         self.assertEqual(
@@ -75,7 +78,10 @@ class TransfermarktScraperTest(unittest.TestCase):
                 )
             return BeautifulSoup(roster_html, "lxml")
 
-        with patch.object(scraper, "get_club_roster_urls", return_value=["/club/roster"]), patch.object(scraper, "parse_page", side_effect=fake_parse_page):
+        with (
+            patch.object(scraper, "get_club_roster_urls", return_value=["/club/roster"]),
+            patch.object(scraper, "parse_page", side_effect=fake_parse_page),
+        ):
             players = scraper.get_players()
 
         self.assertEqual(players[0]["team"], "Inter")

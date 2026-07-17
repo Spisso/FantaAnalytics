@@ -7,7 +7,6 @@ from scraper.transfermarkt import TransfermarktScraper
 from services.csv_service import CsvService
 from services.database_service import DatabaseService
 
-
 CSV_PATH = "data/raw/transfermarkt_players.csv"
 DB_PATH = "database/transfermarkt.db"
 

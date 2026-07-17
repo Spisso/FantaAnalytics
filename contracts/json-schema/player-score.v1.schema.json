@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FantaAnalytics Player Score v1",
+  "type": "object",
+  "required": ["schema_version", "external_id", "score", "tier", "components", "explanation_it"],
+  "properties": {
+    "schema_version": {"const": "player-score.v1"},
+    "external_id": {"type": "string"},
+    "score": {"type": "number", "minimum": 0, "maximum": 100},
+    "tier": {"type": "string"},
+    "components": {"type": "array"},
+    "explanation_it": {"type": "string"}
+  },
+  "additionalProperties": true
+}

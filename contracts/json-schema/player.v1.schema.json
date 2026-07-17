@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantaanalytics.local/contracts/player.v1.schema.json",
+  "title": "FantaAnalytics canonical player input v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "source",
+    "full_name",
+    "birth_date",
+    "nationalities",
+    "team",
+    "source_role",
+    "inferred_fantasy_role",
+    "official_fantasy_role",
+    "season"
+  ],
+  "properties": {
+    "schema_version": {"const": "player.v1"},
+    "source": {"type": "string", "minLength": 1},
+    "external_id": {"type": ["string", "null"], "minLength": 1},
+    "source_url": {"type": ["string", "null"]},
+    "first_name": {"type": ["string", "null"]},
+    "last_name": {"type": ["string", "null"]},
+    "full_name": {"type": "string", "minLength": 1},
+    "birth_date": {"type": ["string", "null"], "format": "date"},
+    "nationalities": {"type": "array", "items": {"type": "string"}, "maxItems": 2},
+    "team": {"type": "string", "minLength": 1},
+    "source_role": {"type": "string", "minLength": 1},
+    "inferred_fantasy_role": {"enum": ["P", "D", "C", "A"]},
+    "official_fantasy_role": {"type": ["string", "null"], "enum": ["P", "D", "C", "A", null]},
+    "preferred_foot": {"type": ["string", "null"]},
+    "height_cm": {"type": ["integer", "null"], "minimum": 100},
+    "market_value": {"type": ["integer", "null"], "minimum": 0},
+    "market_value_currency": {"type": ["string", "null"], "enum": ["EUR", null]},
+    "raw_market_value": {"type": ["string", "null"]},
+    "season": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"}
+  },
+  "additionalProperties": false
+}

@@ -1,8 +1,9 @@
+from pathlib import Path
+
 import pandas as pd
 
 
 class CsvService:
-
     def save(self, data, path):
 
         if not data:
@@ -10,8 +11,10 @@ class CsvService:
         else:
             df = pd.DataFrame(data)
 
+        destination = Path(path)
+        destination.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(
-            path,
+            destination,
             index=False,
-            encoding="utf-8"
+            encoding="utf-8",
         )

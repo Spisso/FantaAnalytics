@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FantaAnalytics Price Prediction v1",
+  "type": "object",
+  "required": ["schema_version", "external_id", "baseline_price", "maximum_recommended_price"],
+  "properties": {
+    "schema_version": {"const": "price-prediction.v1"},
+    "external_id": {"type": "string"},
+    "baseline_price": {"type": "number", "minimum": 1},
+    "maximum_recommended_price": {"type": "number", "minimum": 1}
+  },
+  "additionalProperties": true
+}

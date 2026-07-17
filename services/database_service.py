@@ -1,10 +1,12 @@
 import os
+import re
 import sqlite3
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
+
+_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class DatabaseService:
-
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or os.path.join("database", "transfermarkt.db")
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
@@ -13,7 +15,12 @@ class DatabaseService:
         if not data:
             return
 
+        if not _IDENTIFIER_PATTERN.fullmatch(table_name):
+            raise ValueError("Nome tabella non valido")
+
         columns = list(data[0].keys())
+        if not columns or any(not _IDENTIFIER_PATTERN.fullmatch(column) for column in columns):
+            raise ValueError("Nomi colonna non validi")
         columns_sql = ", ".join(f'"{col}" TEXT' for col in columns)
 
         with sqlite3.connect(self.db_path) as conn:
@@ -22,8 +29,4 @@ class DatabaseService:
             quoted_columns = ", ".join(f'"{col}"' for col in columns)
             insert_sql = f'INSERT INTO "{table_name}" ({quoted_columns}) VALUES ({placeholders})'
 
-            for item in data:
-                values = [item.get(col) for col in columns]
-                conn.execute(insert_sql, values)
-
-            conn.commit()
+            conn.executemany(insert_sql, ([item.get(col) for col in columns] for item in data))

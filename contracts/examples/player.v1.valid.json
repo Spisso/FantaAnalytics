@@ -1,0 +1,21 @@
+{
+  "schema_version": "player.v1",
+  "source": "demo",
+  "external_id": "demo-a-01",
+  "source_url": null,
+  "first_name": "Gabriele",
+  "last_name": "Luna",
+  "full_name": "Gabriele Luna",
+  "birth_date": "1998-12-09",
+  "nationalities": ["Italia"],
+  "team": "Napoli",
+  "source_role": "Punta centrale",
+  "inferred_fantasy_role": "A",
+  "official_fantasy_role": null,
+  "preferred_foot": null,
+  "height_cm": null,
+  "market_value": 65000000,
+  "market_value_currency": "EUR",
+  "raw_market_value": "65,00 mln €",
+  "season": "2026-27"
+}

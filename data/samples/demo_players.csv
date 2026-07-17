@@ -1,0 +1,12 @@
+external_id,full_name,team,birth_date,nationality,source_role,official_fantasy_role,appearances,minutes,goals,assists,fantasy_average,starter_probability,rotation_risk,injury_risk,penalty_taker,set_piece_taker,team_strength,official_quotation,market_value
+demo-p-01,Marco Aurora,Torino,1995-04-12,Italia,Portiere,P,34,3060,0,0,6.25,0.93,0.05,0.08,no,no,0.58,16,"8,00 mln €"
+demo-p-02,Diego Mare,Como,1999-10-02,Italia,Portiere,P,22,1940,0,0,5.92,0.62,0.30,0.12,no,no,0.42,7,"1,20 mln €"
+demo-d-01,Alessio Forte,Inter,1997-02-22,Italia,Difensore centrale,D,33,2900,4,2,6.58,0.91,0.08,0.07,no,yes,0.82,28,"28,00 mln €"
+demo-d-02,Bruno Vento,Bologna,2000-08-19,Italia,Terzino,D,31,2610,2,5,6.31,0.84,0.14,0.10,no,yes,0.66,18,"12,50 mln €"
+demo-d-03,Ciro Bosco,Lecce,2002-01-13,Italia,Difensore centrale,D,18,1260,1,1,5.88,0.48,0.42,0.18,no,no,0.39,5,"2,40 mln €"
+demo-c-01,Daniele Alba,Roma,1996-06-21,Italia,Centrocampista centrale,C,34,2990,10,8,7.18,0.94,0.06,0.06,yes,yes,0.76,55,"42,00 mln €"
+demo-c-02,Elia Ponte,Atalanta,1999-11-03,Italia,Trequartista,C,29,2250,8,7,6.85,0.73,0.22,0.11,no,yes,0.74,34,"24,00 mln €"
+demo-c-03,Filippo Riva,Genoa,2001-03-29,Italia,Centrocampista difensivo,C,32,2710,3,4,6.17,0.86,0.12,0.10,no,no,0.56,13,"9,00 mln €"
+demo-a-01,Gabriele Luna,Napoli,1998-12-09,Italia,Punta centrale,A,35,3080,22,6,7.72,0.95,0.04,0.07,yes,no,0.83,130,"65,00 mln €"
+demo-a-02,Hassan Sera,Fiorentina,2000-05-17,Marocco,Ala sinistra,A,30,2380,12,9,7.03,0.78,0.19,0.12,no,yes,0.68,62,"32,00 mln €"
+demo-a-03,Ivan Nebbia,Parma,2003-09-25,Italia,Seconda punta,A,16,810,4,2,6.20,0.38,0.48,0.20,no,no,0.46,12,"4,00 mln €"

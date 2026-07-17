@@ -1,5 +1,6 @@
-# Python virtual environment
+# Python virtual environments
 venv/
+.venv/
 
 # Python cache
 __pycache__/
@@ -7,7 +8,27 @@ __pycache__/
 
 # Environment files
 .env
+.env.*
+!.env.example
 
-# Data temporanei
+# Local and generated data. Deterministic demo inputs live in data/samples/.
 data/raw/*
 data/processed/*
+data/exports/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/exports/.gitkeep
+
+# Local databases, caches and test output
+database/*.db
+*.sqlite3
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+coverage.xml
+htmlcov/
+
+# JavaScript and PHP dependencies/build output
+node_modules/
+vendor/
+dist/

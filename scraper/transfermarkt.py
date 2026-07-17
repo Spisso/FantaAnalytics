@@ -5,19 +5,10 @@ from bs4 import BeautifulSoup
 
 
 class TransfermarktScraper:
-
     def __init__(self):
-        self.url = (
-            "https://www.transfermarkt.it/"
-            "serie-a/startseite/wettbewerb/IT1"
-        )
+        self.url = "https://www.transfermarkt.it/serie-a/startseite/wettbewerb/IT1"
 
-        self.headers = {
-            "User-Agent": (
-                "Mozilla/5.0 "
-                "(Macintosh; Intel Mac OS X 10_15_7)"
-            )
-        }
+        self.headers = {"User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")}
 
     def get_page(self, url=None):
 
@@ -87,7 +78,8 @@ class TransfermarktScraper:
 
                     player_data = {
                         "name": name,
-                        "team": self._extract_profile_field(player_soup, "Squadra attuale") or team_name,
+                        "team": self._extract_profile_field(player_soup, "Squadra attuale")
+                        or team_name,
                         "birth_date": self._extract_birth_date(player_soup),
                         "position": self._extract_profile_field(player_soup, "Posizione"),
                         "nationality": self._extract_profile_field(player_soup, "Nazionalità"),
