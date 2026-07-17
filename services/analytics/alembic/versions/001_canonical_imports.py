@@ -61,6 +61,7 @@ def upgrade():
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_index("idx_players_identity", "players", ["normalized_name", "birth_date"])
+    op.create_index("idx_players_team", "players", ["current_team_id"])
     op.create_table(
         "player_source_mappings",
         sa.Column("id", sa.Integer, primary_key=True),
@@ -82,6 +83,7 @@ def upgrade():
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.UniqueConstraint("data_source_id", "external_source_id"),
     )
+    op.create_index("idx_source_mapping_player", "player_source_mappings", ["player_id"])
     op.create_table(
         "data_import_runs",
         sa.Column("id", sa.Integer, primary_key=True),
@@ -100,9 +102,14 @@ def upgrade():
         sa.Column("updated_rows", sa.Integer, nullable=False, server_default="0"),
         sa.Column("skipped_rows", sa.Integer, nullable=False, server_default="0"),
         sa.Column("error_rows", sa.Integer, nullable=False, server_default="0"),
-        sa.Column("metadata", sa.JSON, nullable=False),
+        sa.Column("metadata", sa.JSON, nullable=False, server_default=sa.text("'{}'")),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+    )
+    op.create_index(
+        "idx_import_runs_checksum",
+        "data_import_runs",
+        ["data_source_id", "input_checksum", "season"],
     )
     op.create_table(
         "data_import_errors",
@@ -137,6 +144,7 @@ def upgrade():
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.UniqueConstraint("import_run_id", "row_number"),
     )
+    op.create_index("idx_raw_records_checksum", "raw_records", ["payload_checksum"])
 
 
 def downgrade():

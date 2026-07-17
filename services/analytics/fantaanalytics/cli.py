@@ -7,17 +7,21 @@ import sys
 from pathlib import Path
 from typing import Any, Dict
 
+from alembic import command as alembic_command
+from alembic.config import Config as AlembicConfig
+
 from .import_service import PlayerImportService
 from .importer import import_csv
 from .persistence import CanonicalRepository, MigrationRunner
 from .pricing import LeagueConfig, predict_prices
 from .scoring import score_players
+from .settings import Settings
 
-DEFAULT_DATABASE = Path("data/processed/fantaanalytics.db")
+DEFAULT_DATABASE = Settings.from_env().database_url
 
 
 def _print_json(value: Dict[str, Any]) -> None:
-    print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+    print(json.dumps(value, ensure_ascii=False, sort_keys=True, default=str))
 
 
 def run_score(source: str, destination: str) -> int:
@@ -102,7 +106,19 @@ def run_list(args: argparse.Namespace) -> int:
     return 0
 
 
-def run_upgrade(database: Path) -> int:
+def _run_alembic(database_url: str, revision: str) -> None:
+    config = AlembicConfig("alembic.ini")
+    config.attributes["database_url"] = database_url
+    alembic_command.upgrade(config, revision) if revision == "head" else alembic_command.downgrade(
+        config, revision
+    )
+
+
+def run_upgrade(database) -> int:
+    if "://" in str(database):
+        _run_alembic(str(database), "head")
+        print("Database aggiornato con Alembic")
+        return 0
     migrations = MigrationRunner(database).upgrade()
     print(
         "Database aggiornato" + (f": {', '.join(migrations)}" if migrations else ": già aggiornato")
@@ -110,7 +126,11 @@ def run_upgrade(database: Path) -> int:
     return 0
 
 
-def run_downgrade(database: Path) -> int:
+def run_downgrade(database) -> int:
+    if "://" in str(database):
+        _run_alembic(str(database), "base")
+        print("Database riportato alla base con Alembic")
+        return 0
     version = MigrationRunner(database).downgrade()
     print(f"Database downgrade: {version}" if version else "Nessuna migrazione da annullare")
     return 0
@@ -130,27 +150,26 @@ def main() -> int:
     score = subparsers.add_parser("score", help="Importa CSV e genera score/prezzi")
     score.add_argument("source")
     score.add_argument("destination")
-    for name, handler in (
-        ("db-upgrade", run_upgrade),
-        ("db-downgrade", run_downgrade),
-        ("db-reset-test", run_reset_test),
-    ):
+    for name, handler in (("db-upgrade", run_upgrade), ("db-downgrade", run_downgrade)):
         command = subparsers.add_parser(name)
-        command.add_argument("--database", type=Path, default=DEFAULT_DATABASE)
+        command.add_argument("--database", default=DEFAULT_DATABASE)
         command.set_defaults(handler=handler)
+    reset = subparsers.add_parser("db-reset-test")
+    reset.add_argument("--database", type=Path, default=Path("data/processed/fantaanalytics.test.db"))
+    reset.set_defaults(handler=run_reset_test)
     imported = subparsers.add_parser(
         "import-players", help="Importa giocatori nel database canonico"
     )
     imported.add_argument("--file", required=True)
     imported.add_argument("--source", required=True)
     imported.add_argument("--season", required=True)
-    imported.add_argument("--database", type=Path, default=DEFAULT_DATABASE)
+    imported.add_argument("--database", default=DEFAULT_DATABASE)
     imported.add_argument("--strict", action="store_true")
     imported.add_argument("--force", action="store_true")
     imported.add_argument("--json-output", action="store_true")
     imported.set_defaults(handler=run_import)
     listed = subparsers.add_parser("list-players", help="Elenca i giocatori canonici importati")
-    listed.add_argument("--database", type=Path, default=DEFAULT_DATABASE)
+    listed.add_argument("--database", default=DEFAULT_DATABASE)
     listed.add_argument("--role", choices=["P", "D", "C", "A"])
     listed.add_argument("--team")
     listed.add_argument("--season")

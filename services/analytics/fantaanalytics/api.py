@@ -1,25 +1,27 @@
 """Minimal read-only WSGI API over the canonical repository."""
 
 import json
+import logging
 from http import HTTPStatus
-from pathlib import Path
 from typing import Callable, Iterable, List, Tuple
 from urllib.parse import parse_qs
 
 from .persistence import CanonicalRepository
 
+logger = logging.getLogger(__name__)
+
 StartResponse = Callable[[str, List[Tuple[str, str]]], None]
 
 
 class FantaAnalyticsApi:
-    def __init__(self, database_path: Path):
-        self.repository = CanonicalRepository(database_path)
+    def __init__(self, database):
+        self.repository = CanonicalRepository(database)
 
     @staticmethod
     def _response(
         start_response: StartResponse, status: HTTPStatus, payload: dict
     ) -> Iterable[bytes]:
-        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
         start_response(
             f"{status.value} {status.phrase}",
             [
@@ -37,10 +39,18 @@ class FantaAnalyticsApi:
         path = environ.get("PATH_INFO", "")
         query = parse_qs(environ.get("QUERY_STRING", ""))
         if path == "/health":
-            ready = self.repository.is_available()
-            status = HTTPStatus.OK if ready else HTTPStatus.SERVICE_UNAVAILABLE
             return self._response(
-                start_response, status, {"status": "ok" if ready else "degraded", "database": ready}
+                start_response, HTTPStatus.OK, {"status": "ok", "service": "analytics"}
+            )
+        if path == "/ready":
+            ready = self.repository.is_ready()
+            status = HTTPStatus.OK if ready else HTTPStatus.SERVICE_UNAVAILABLE
+            if not ready:
+                logger.warning("Database readiness check failed")
+            return self._response(
+                start_response,
+                status,
+                {"status": "ready" if ready else "unavailable", "database": ready},
             )
         if path == "/api/v1/players":
             players = self.repository.list_players(
@@ -73,5 +83,5 @@ class FantaAnalyticsApi:
         )
 
 
-def create_app(database_path: Path) -> FantaAnalyticsApi:
-    return FantaAnalyticsApi(database_path)
+def create_app(database) -> FantaAnalyticsApi:
+    return FantaAnalyticsApi(database)

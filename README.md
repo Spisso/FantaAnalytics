@@ -9,8 +9,9 @@ FantaAnalytics è una piattaforma in italiano per analizzare giocatori e prepara
 - Fanta Score deterministico, per ruolo e spiegabile in italiano;
 - stima prezzi coerente con budget e quote ruolo configurabili;
 - dataset demo fittizio ed export CSV;
-- migrazioni SQLite, import run, raw record, source mapping e query canonica dei player;
-- API WSGI di sola lettura con health, player e import run, coperta da OpenAPI;
+- repository canonico SQLAlchemy compatibile con SQLite e PostgreSQL;
+- migrazioni Alembic PostgreSQL, import run, raw record, source mapping e query player;
+- API WSGI di sola lettura con liveness, readiness, player e import run, coperta da OpenAPI;
 - scraper Transfermarkt storico con fallback CSV (non necessario né verificato live).
 
 Le proiezioni e i prezzi sono supporto decisionale, non garanzie; dati e disponibilità dei giocatori possono cambiare.
@@ -43,16 +44,16 @@ make import-sample
 make list-players
 ```
 
-L'import conserva ogni riga raw, errori strutturati e provenienza. A parità di fonte, stagione e checksum del file, un re-import è ignorato; `--force` riesegue il matching e aggiorna solo i campi cambiati. Il backend locale è SQLite e la destinazione PostgreSQL non è ancora implementata.
+L'import conserva ogni riga raw, errori strutturati e provenienza. A parità di fonte, stagione e checksum del file, un re-import è ignorato; `--force` riesegue il matching e aggiorna solo i campi cambiati. SQLite resta il default locale; `DATABASE_URL` seleziona PostgreSQL per API, CLI, repository e Alembic.
 
 ## Architettura
 
 ```text
-CSV / fixture → contratto → import run + repository SQLite → query CLI
+CSV / fixture → contratto → import run + repository SQLAlchemy → query CLI/API
                                            ↓
                               score → prezzo → export
                                            ↓
-                         futura API Laravel/PostgreSQL ↔ futura UI Vue
+                              SQLite locale / PostgreSQL Docker
 ```
 
 Vedi [ARCHITECTURE.md](docs/ARCHITECTURE.md) e lo stato reale in [PROGRESS.md](docs/PROGRESS.md).
@@ -69,4 +70,4 @@ make lint
 make format
 ```
 
-La documentazione tecnica e le decisioni sono in [docs/](docs/). Non esiste ancora una UI, un container Docker o un deployment supportato; sono riportati in modo esplicito nel piano, non simulati come pronti.
+La documentazione tecnica e le decisioni sono in [docs/](docs/). Il servizio analytics e PostgreSQL sono eseguibili con Docker Compose; Laravel e Vue non sono ancora iniziati.

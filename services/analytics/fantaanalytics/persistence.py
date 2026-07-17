@@ -1,4 +1,4 @@
-"""Repository abstraction and explicit SQLite migrations for canonical import data."""
+"""Repository abstraction for canonical import data on SQLite and PostgreSQL."""
 
 import json
 import sqlite3
@@ -6,6 +6,10 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional
+
+from sqlalchemy import JSON, bindparam, create_engine, text
+from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.exc import SQLAlchemyError
 
 from .matching import AMBIGUOUS, CREATED, INVALID, MATCHED, MatchResult
 from .normalization import normalize_name
@@ -72,48 +76,84 @@ class MigrationRunner:
             return version
 
 
+class _ConnectionAdapter:
+    """Small compatibility layer while repository queries migrate to SQLAlchemy binds."""
+
+    def __init__(self, connection: Connection):
+        self.connection = connection
+
+    def execute(self, statement: str, parameters=None):
+        if parameters is None:
+            return self.connection.execute(text(statement))
+        if isinstance(parameters, (tuple, list)):
+            values = list(parameters)
+            parts = statement.split("?")
+            if len(parts) - 1 != len(values):
+                raise ValueError("Numero di parametri SQL non coerente")
+            rewritten = parts[0]
+            binds = {}
+            for index, value in enumerate(values):
+                key = f"value_{index}"
+                rewritten += f":{key}{parts[index + 1]}"
+                binds[key] = value
+            statement, parameters = rewritten, binds
+        clause = text(statement)
+        if isinstance(parameters, dict):
+            json_keys = [
+                key for key, value in parameters.items() if isinstance(value, (dict, list))
+            ]
+            if json_keys:
+                clause = clause.bindparams(*(bindparam(key, type_=JSON) for key in json_keys))
+        return self.connection.execute(clause, parameters)
+
+
 class CanonicalRepository:
-    """One persistence boundary for imports; use SQLite locally and in isolated tests."""
+    """One persistence boundary shared by SQLite locally and PostgreSQL in Docker."""
 
-    def __init__(self, database_path: Path):
-        self.database_path = Path(database_path)
-
-    def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.database_path)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys = ON")
-        return connection
+    def __init__(self, database):
+        value = str(database)
+        if "://" not in value:
+            path = Path(value)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            value = f"sqlite:///{path}"
+        self.database_url = value
+        self.engine: Engine = create_engine(value, future=True)
 
     @contextmanager
-    def transaction(self) -> Iterator[sqlite3.Connection]:
-        connection = self._connect()
-        try:
-            connection.execute("BEGIN")
-            yield connection
-            connection.commit()
-        except Exception:
-            connection.rollback()
-            raise
-        finally:
-            connection.close()
+    def _connect(self) -> Iterator[_ConnectionAdapter]:
+        with self.engine.connect() as connection:
+            if connection.dialect.name == "sqlite":
+                connection.exec_driver_sql("PRAGMA foreign_keys = ON")
+            yield _ConnectionAdapter(connection)
+
+    @contextmanager
+    def transaction(self) -> Iterator[_ConnectionAdapter]:
+        with self.engine.begin() as connection:
+            if connection.dialect.name == "sqlite":
+                connection.exec_driver_sql("PRAGMA foreign_keys = ON")
+            yield _ConnectionAdapter(connection)
 
     @staticmethod
-    def _dump(value: Any) -> str:
-        return json.dumps(
-            value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str
-        )
+    def _insert_id(connection: _ConnectionAdapter, statement: str, parameters: dict) -> int:
+        result = connection.execute(f"{statement} RETURNING id", parameters)
+        return int(result.scalar_one())
+
+    def _dump(self, value: Any):
+        if self.engine.dialect.name == "postgresql":
+            return value
+        return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
 
     def get_or_create_source(self, connection: sqlite3.Connection, code: str) -> int:
         row = connection.execute("SELECT id FROM data_sources WHERE code = ?", (code,)).fetchone()
         if row:
-            return int(row["id"])
+            return int(row._mapping["id"])
         now = utc_now()
-        cursor = connection.execute(
+        return self._insert_id(
+            connection,
             """INSERT INTO data_sources(code, name, source_type, base_url, active, created_at, updated_at)
-               VALUES (?, ?, 'file', NULL, 1, ?, ?)""",
-            (code, code.replace("_", " ").title(), now, now),
+               VALUES (:code, :name, 'file', NULL, true, :created_at, :updated_at)""",
+            {"code": code, "name": code.replace("_", " ").title(), "created_at": now, "updated_at": now},
         )
-        return int(cursor.lastrowid)
 
     def find_duplicate_run(
         self, connection: sqlite3.Connection, source_id: int, checksum: str, season: str
@@ -125,7 +165,7 @@ class CanonicalRepository:
                ORDER BY id DESC LIMIT 1""",
             (source_id, checksum, season),
         ).fetchone()
-        return int(row["id"]) if row else None
+        return int(row._mapping["id"]) if row else None
 
     def create_import_run(
         self,
@@ -138,14 +178,17 @@ class CanonicalRepository:
         parser_version: str,
     ) -> int:
         now = utc_now()
-        cursor = connection.execute(
+        return self._insert_id(
+            connection,
             """INSERT INTO data_import_runs(
                 data_source_id, schema_version, season, status, started_at, input_filename,
                 input_checksum, parser_version, created_at, updated_at
-            ) VALUES (?, ?, ?, 'running', ?, ?, ?, ?, ?, ?)""",
-            (source_id, schema_version, season, now, filename, checksum, parser_version, now, now),
+            ) VALUES (:source_id, :schema_version, :season, 'running', :started_at, :filename,
+                      :checksum, :parser_version, :created_at, :updated_at)""",
+            {"source_id": source_id, "schema_version": schema_version, "season": season,
+             "started_at": now, "filename": filename, "checksum": checksum,
+             "parser_version": parser_version, "created_at": now, "updated_at": now},
         )
-        return int(cursor.lastrowid)
 
     def finalize_import_run(self, connection: sqlite3.Connection, run_id: int, result: Any) -> None:
         now = utc_now()
@@ -223,14 +266,16 @@ class CanonicalRepository:
             (normalized, competition, season),
         ).fetchone()
         if row:
-            return int(row["id"])
+            return int(row._mapping["id"])
         now = utc_now()
-        cursor = connection.execute(
+        return self._insert_id(
+            connection,
             """INSERT INTO football_teams(canonical_name, normalized_name, short_name, competition, season, active, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, 1, ?, ?)""",
-            (canonical_name, normalized, canonical_name, competition, season, now, now),
+               VALUES (:canonical_name, :normalized_name, :short_name, :competition, :season, true, :created_at, :updated_at)""",
+            {"canonical_name": canonical_name, "normalized_name": normalized,
+             "short_name": canonical_name, "competition": competition, "season": season,
+             "created_at": now, "updated_at": now},
         )
-        return int(cursor.lastrowid)
 
     def match_player(
         self, connection: sqlite3.Connection, source_id: int, payload: Dict[str, Any], season: str
@@ -242,7 +287,7 @@ class CanonicalRepository:
                 (source_id, external_id),
             ).fetchone()
             if row:
-                return MatchResult(MATCHED, int(row["player_id"]), "source_external_id")
+                return MatchResult(MATCHED, int(row._mapping["player_id"]), "source_external_id")
         normalized_name = normalize_name(payload["full_name"])
         birth_date = payload.get("birth_date")
         if birth_date:
@@ -251,7 +296,7 @@ class CanonicalRepository:
                 (normalized_name, birth_date),
             ).fetchall()
             if len(rows) == 1:
-                return MatchResult(MATCHED, int(rows[0]["id"]), "name_birth_date")
+                return MatchResult(MATCHED, int(rows[0]._mapping["id"]), "name_birth_date")
             if len(rows) > 1:
                 return MatchResult(AMBIGUOUS, reason="name_birth_date")
         team_id = self._resolve_team(connection, payload["team"], season)
@@ -261,11 +306,11 @@ class CanonicalRepository:
         ).fetchall()
         if len(rows) == 1:
             existing_birth_date = connection.execute(
-                "SELECT birth_date FROM players WHERE id=?", (rows[0]["id"],)
-            ).fetchone()["birth_date"]
+                "SELECT birth_date FROM players WHERE id=?", (rows[0]._mapping["id"],)
+            ).fetchone()._mapping["birth_date"]
             if birth_date and existing_birth_date and existing_birth_date != birth_date:
                 return MatchResult(AMBIGUOUS, reason="name_team_birth_date_conflict")
-            return MatchResult(MATCHED, int(rows[0]["id"]), "name_team")
+            return MatchResult(MATCHED, int(rows[0]._mapping["id"]), "name_team")
         if len(rows) > 1:
             return MatchResult(AMBIGUOUS, reason="name_team")
         return MatchResult(CREATED, reason="no_candidate")
@@ -303,17 +348,17 @@ class CanonicalRepository:
             "current_team_id": team_id,
         }
         if match.status == CREATED:
-            cursor = connection.execute(
+            player_id = self._insert_id(
+                connection,
                 """INSERT INTO players(
                     canonical_full_name,first_name,last_name,normalized_name,birth_date,nationality,secondary_nationality,
                     preferred_foot,height_cm,source_role,inferred_fantasy_role,official_fantasy_role,effective_fantasy_role,
                     current_team_id,active,notes,created_at,updated_at
                 ) VALUES (:canonical_full_name,:first_name,:last_name,:normalized_name,:birth_date,:nationality,:secondary_nationality,
                     :preferred_foot,:height_cm,:source_role,:inferred_fantasy_role,:official_fantasy_role,:effective_fantasy_role,
-                    :current_team_id,1,NULL,:created_at,:updated_at)""",
+                    :current_team_id,true,NULL,:created_at,:updated_at)""",
                 {**values, "created_at": now, "updated_at": now},
             )
-            player_id = int(cursor.lastrowid)
             outcome = "inserted"
         else:
             player_id = int(match.player_id)
@@ -321,7 +366,7 @@ class CanonicalRepository:
                 "SELECT * FROM players WHERE id=?", (player_id,)
             ).fetchone()
             comparison_fields = list(values)
-            unchanged = all(existing[field] == values[field] for field in comparison_fields)
+            unchanged = all(existing._mapping[field] == values[field] for field in comparison_fields)
             if unchanged:
                 outcome = "skipped"
             else:
@@ -342,7 +387,7 @@ class CanonicalRepository:
                     """INSERT INTO player_source_mappings(
                         player_id,data_source_id,external_source_id,source_url,source_display_name,
                         matching_confidence,manually_confirmed,created_at,updated_at
-                    ) VALUES (?, ?, ?, ?, ?, 1.0, 0, ?, ?)""",
+                    ) VALUES (?, ?, ?, ?, ?, 1.0, false, ?, ?)""",
                     (
                         player_id,
                         source_id,
@@ -379,7 +424,7 @@ class CanonicalRepository:
                      FROM players p JOIN football_teams t ON t.id=p.current_team_id
                      WHERE {" AND ".join(clauses)} ORDER BY p.canonical_full_name LIMIT ?"""
         with self._connect() as connection:
-            return [dict(row) for row in connection.execute(query, parameters).fetchall()]
+            return [dict(row._mapping) for row in connection.execute(query, parameters).fetchall()]
 
     def get_player(self, player_id: int) -> Optional[Dict[str, Any]]:
         query = """SELECT p.id, p.canonical_full_name, p.first_name, p.last_name, p.normalized_name,
@@ -390,7 +435,7 @@ class CanonicalRepository:
                    FROM players p JOIN football_teams t ON t.id=p.current_team_id WHERE p.id=?"""
         with self._connect() as connection:
             row = connection.execute(query, (player_id,)).fetchone()
-            return dict(row) if row else None
+            return dict(row._mapping) if row else None
 
     def list_import_runs(self, limit: int = 50) -> List[Dict[str, Any]]:
         query = """SELECT r.id, s.code AS source, r.season, r.status, r.input_filename,
@@ -400,7 +445,7 @@ class CanonicalRepository:
                    ORDER BY r.id DESC LIMIT ?"""
         with self._connect() as connection:
             return [
-                dict(row)
+                dict(row._mapping)
                 for row in connection.execute(query, (max(1, min(limit, 200)),)).fetchall()
             ]
 
@@ -409,7 +454,20 @@ class CanonicalRepository:
             with self._connect() as connection:
                 connection.execute("SELECT 1").fetchone()
             return True
-        except sqlite3.Error:
+        except SQLAlchemyError:
+            return False
+
+    def is_ready(self) -> bool:
+        try:
+            with self._connect() as connection:
+                connection.execute("SELECT 1").fetchone()
+                if self.engine.dialect.name == "sqlite":
+                    connection.execute("SELECT version FROM schema_migrations LIMIT 1").fetchone()
+                else:
+                    connection.execute("SELECT version_num FROM alembic_version LIMIT 1").fetchone()
+                connection.execute("SELECT 1 FROM players LIMIT 1").fetchone()
+            return True
+        except SQLAlchemyError:
             return False
 
     def count_rows(self, table: str) -> int:
