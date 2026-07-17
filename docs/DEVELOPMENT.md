@@ -33,3 +33,19 @@ docker compose exec analytics python -m services.analytics.fantaanalytics.cli li
 ```
 
 Ruff verifica errori e import; `E501` è escluso perché il repository conserva fixture HTML, payload CSV e query SQL leggibili che superano la soglia tipografica senza incidere sul comportamento. Le regole di upgrade automatico sono escluse per mantenere la compatibilità con Python 3.9.
+
+## Laravel API
+
+PHP 8.2+ è richiesto. Se Composer non è installato localmente, il Makefile usa l'immagine ufficiale:
+
+```bash
+make api-install
+make api-lint
+make api-test
+make api-up
+make api-shell
+make api-logs
+make api-health
+```
+
+I test usano `Http::fake()` e non richiedono Analytics reale. `PlayerIndexRequest` accetta solo `role`, `team`, `season` e `limit`; configurazione e timeout risiedono in `config/services.php`, non nei controller.

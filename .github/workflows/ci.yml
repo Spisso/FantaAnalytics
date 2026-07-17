@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: make lint
+      - run: make test
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist --working-dir=apps/api
+      - run: make api-lint
+      - run: make api-test
+      - run: docker compose config --quiet
+      - run: docker compose build
+      - run: docker compose up -d postgres analytics api
+      - run: docker compose exec -T analytics alembic upgrade head
+      - run: docker compose exec -T analytics python -m services.analytics.fantaanalytics.cli import-players --file data/samples/demo_players.csv --source demo --season 2026-27
+      - run: curl --retry 12 --retry-connrefused --fail http://localhost:8081/api/v1/analytics/status
+      - run: curl --fail "http://localhost:8081/api/v1/players?season=2026-27"

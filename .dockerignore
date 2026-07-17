@@ -10,3 +10,8 @@ data/raw
 data/processed
 data/exports
 node_modules
+**/node_modules
+**/vendor
+apps/api/.env
+apps/api/database/*.sqlite*
+apps/api/bootstrap/cache/*.php

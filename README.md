@@ -12,6 +12,8 @@ FantaAnalytics è una piattaforma in italiano per analizzare giocatori e prepara
 - repository canonico SQLAlchemy compatibile con SQLite e PostgreSQL;
 - migrazioni Alembic PostgreSQL, import run, raw record, source mapping e query player;
 - API WSGI di sola lettura con liveness, readiness, player e import run, coperta da OpenAPI;
+- gateway pubblico Laravel 12 con client Analytics tipizzato, validazione ed error handling;
+- stack Docker PostgreSQL → Analytics → Laravel;
 - scraper Transfermarkt storico con fallback CSV (non necessario né verificato live).
 
 Le proiezioni e i prezzi sono supporto decisionale, non garanzie; dati e disponibilità dei giocatori possono cambiare.
@@ -70,4 +72,12 @@ make lint
 make format
 ```
 
-La documentazione tecnica e le decisioni sono in [docs/](docs/). Il servizio analytics e PostgreSQL sono eseguibili con Docker Compose; Laravel e Vue non sono ancora iniziati.
+Avvio dello stack applicativo:
+
+```bash
+make stack-up
+docker compose exec analytics alembic upgrade head
+make api-health
+```
+
+Laravel è pubblicato su `http://localhost:8081` perché la porta 8080 può essere già occupata localmente. `ANALYTICS_BASE_URL=http://analytics:8000` è usato solo sulla rete Docker. Vue non è ancora iniziato.

@@ -36,5 +36,30 @@ services:
       timeout: 5s
       retries: 12
     restart: unless-stopped
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      APP_NAME: FantaAnalytics
+      APP_ENV: ${API_APP_ENV:-local}
+      APP_KEY: ${API_APP_KEY:-base64:MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=}
+      APP_DEBUG: ${API_APP_DEBUG:-false}
+      LOG_CHANNEL: stderr
+      ANALYTICS_BASE_URL: http://analytics:8000
+      ANALYTICS_TIMEOUT: ${ANALYTICS_TIMEOUT:-5}
+      ANALYTICS_CONNECT_TIMEOUT: ${ANALYTICS_CONNECT_TIMEOUT:-2}
+      ANALYTICS_RETRIES: ${ANALYTICS_RETRIES:-2}
+    ports:
+      - "${API_PORT:-8081}:8080"
+    depends_on:
+      analytics:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "$$c=@file_get_contents('http://127.0.0.1:8080/api/v1/health'); exit($$c===false?1:0);"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
 volumes:
   fantaanalytics_postgres_data:

@@ -2,10 +2,14 @@
 PYTHON ?= $(or $(wildcard .venv/bin/python),$(wildcard venv/bin/python),python3)
 DATABASE ?= data/processed/fantaanalytics.db
 
-.PHONY: help bootstrap test test-unit lint format seed-demo import-sample list-players db-upgrade db-downgrade db-reset-test score export clean
+.PHONY: help bootstrap test test-unit lint format seed-demo import-sample list-players db-upgrade db-downgrade db-reset-test score export clean api-install api-test api-lint api-up api-shell api-logs api-health stack-up stack-down stack-test
+
+USER_ID := $(shell id -u)
+GROUP_ID := $(shell id -g)
+COMPOSER_RUN = docker run --rm -u $(USER_ID):$(GROUP_ID) -v $(CURDIR)/apps/api:/app -w /app composer:2
 
 help:
-	@echo "Available targets: bootstrap test lint db-upgrade import-sample list-players seed-demo"
+	@echo "Available targets: bootstrap test lint db-upgrade import-sample list-players seed-demo api-test api-lint stack-up stack-test"
 
 bootstrap:
 	$(PYTHON) -m venv .venv
@@ -43,3 +47,41 @@ list-players:
 score: seed-demo
 
 export: seed-demo
+
+api-install:
+	$(COMPOSER_RUN) composer install --no-interaction --prefer-dist
+
+api-test:
+	@test -f apps/api/vendor/autoload.php || $(MAKE) api-install
+	cd apps/api && php artisan test
+
+api-lint:
+	@test -f apps/api/vendor/autoload.php || $(MAKE) api-install
+	apps/api/vendor/bin/pint --test
+
+api-up:
+	docker compose up -d api
+
+api-shell:
+	docker compose exec api sh
+
+api-logs:
+	docker compose logs --tail=100 api
+
+api-health:
+	curl --fail http://localhost:$${API_PORT:-8081}/api/v1/health
+
+stack-up:
+	docker compose up -d postgres analytics api
+
+stack-down:
+	docker compose down
+
+stack-test: stack-up
+	docker compose exec analytics alembic upgrade head
+	docker compose exec analytics python -m services.analytics.fantaanalytics.cli import-players --file data/samples/demo_players.csv --source demo --season 2026-27
+	curl --fail http://localhost:$${ANALYTICS_API_PORT:-8000}/health
+	curl --fail http://localhost:$${ANALYTICS_API_PORT:-8000}/ready
+	curl --fail http://localhost:$${API_PORT:-8081}/api/v1/health
+	curl --fail http://localhost:$${API_PORT:-8081}/api/v1/analytics/status
+	curl --fail "http://localhost:$${API_PORT:-8081}/api/v1/players?season=2026-27"
