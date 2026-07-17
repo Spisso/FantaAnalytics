@@ -2,11 +2,11 @@
 
 ## Last verified milestone
 
-Laravel API foundation: client → Laravel → Analytics → PostgreSQL, inclusa degradazione controllata.
+Laravel league domain foundation su database PostgreSQL applicativo separato.
 
 ## Currently implementing
 
-Gateway Laravel 12 pubblico verificato; Vue resta fuori scope.
+CRUD leghe, regole, roster rules, partecipanti e policy verificati; Vue resta fuori scope.
 
 ## Completed
 
@@ -24,6 +24,10 @@ Gateway Laravel 12 pubblico verificato; Vue resta fuori scope.
 - [x] Client HTTP con DTO, filtri validati, timeout e mapping errori.
 - [x] Stack Docker PostgreSQL → Analytics → Laravel e test di degradazione/ripristino.
 - [x] CI per Python, Laravel, contratto e integrazione PostgreSQL.
+- [x] Database `fantaanalytics_app`, migrazioni users/league domain e rollback.
+- [x] Aggregate lega transazionale, owner participant, rules e roster defaults.
+- [x] Policy owner/participant, guest participant, participant limit e seed demo idempotente.
+- [x] API CRUD leghe, rules, roster rules e participants.
 
 ## Remaining
 
@@ -43,7 +47,8 @@ Gateway Laravel 12 pubblico verificato; Vue resta fuori scope.
 - import demo PostgreSQL — 11 player inseriti; secondo import saltato come duplicato; conteggio 11.
 - endpoint health/readiness/list/detail/import-runs — HTTP 200.
 - `docker compose restart postgres` — volume persistente, readiness verde e conteggio ancora 11.
-- `make api-test` — 12 test Laravel superati.
+- `make api-test` — 19 test Laravel, 84 assertion superati.
+- `make api-migrate` e `make api-seed-demo` — PostgreSQL applicativo verificato con 10 partecipanti.
 - `make api-lint` — Laravel Pint superato.
 - endpoint Laravel reali — health/status/list/detail/import-runs HTTP 200 su porta 8081.
 - Analytics fermato — Laravel health 200, status degradato 200, players 503; ripristino verificato.
@@ -58,4 +63,4 @@ Gateway Laravel 12 pubblico verificato; Vue resta fuori scope.
 
 ## Exact next action
 
-Definire il primo contratto applicativo Laravel per utenti e fantasy league, senza iniziare Vue finché ownership e migrazioni non sono approvate.
+Progettare l'aggregate asta (eventi, budget, acquisti e undo) senza ancora introdurre Vue o realtime.

@@ -49,3 +49,13 @@ make api-health
 ```
 
 I test usano `Http::fake()` e non richiedono Analytics reale. `PlayerIndexRequest` accetta solo `role`, `team`, `season` e `limit`; configurazione e timeout risiedono in `config/services.php`, non nei controller.
+
+Dominio lega e database applicativo:
+
+```bash
+make api-migrate
+make api-seed-demo
+CONFIRM_DESTRUCTIVE=1 make api-migrate-fresh
+```
+
+`api-migrate-fresh` è intenzionalmente protetto e va usato solo in sviluppo. Il seed demo è idempotente e crea `demo@fantaanalytics.local`, una lega 2026-27 e dieci partecipanti. Le API protette usano temporaneamente l'header `X-User-ID`.

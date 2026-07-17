@@ -46,6 +46,12 @@ services:
       APP_KEY: ${API_APP_KEY:-base64:MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=}
       APP_DEBUG: ${API_APP_DEBUG:-false}
       LOG_CHANNEL: stderr
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${APP_POSTGRES_DB:-fantaanalytics_app}
+      DB_USERNAME: ${POSTGRES_USER:-fantaanalytics}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-fantaanalytics_dev}
       ANALYTICS_BASE_URL: http://analytics:8000
       ANALYTICS_TIMEOUT: ${ANALYTICS_TIMEOUT:-5}
       ANALYTICS_CONNECT_TIMEOUT: ${ANALYTICS_CONNECT_TIMEOUT:-2}

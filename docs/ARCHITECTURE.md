@@ -25,3 +25,7 @@ client → Laravel :8081 → http://analytics:8000 → PostgreSQL
 ```
 
 Controller Laravel → Form Request/DTO → `AnalyticsClient` → API Python. Timeout, JSON invalido e status upstream vengono convertiti in errori applicativi senza stack trace.
+
+Il container PostgreSQL ospita due database senza FK incrociate: `fantaanalytics` è migrato da Alembic, `fantaanalytics_app` da Laravel. Riferimenti futuri a player useranno un valore esterno `analytics_player_id`, mai una foreign key SQL.
+
+Il dominio lega è un aggregate: `CreateFantasyLeague` crea in una transazione lega, regole, roster rules e partecipante owner. Controller → Form Request → Policy → Action → Eloquent Resource mantiene validazione, autorizzazione e persistenza separate.

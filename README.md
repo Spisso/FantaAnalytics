@@ -78,6 +78,10 @@ Avvio dello stack applicativo:
 make stack-up
 docker compose exec analytics alembic upgrade head
 make api-health
+make api-migrate
+make api-seed-demo
 ```
 
 Laravel è pubblicato su `http://localhost:8081` perché la porta 8080 può essere già occupata localmente. `ANALYTICS_BASE_URL=http://analytics:8000` è usato solo sulla rete Docker. Vue non è ancora iniziato.
+
+Il dominio Laravel include utenti, leghe, regole, configurazione posti e partecipanti. Le API lega richiedono temporaneamente `X-User-ID`; è un meccanismo di sviluppo, non autenticazione di produzione. PostgreSQL ospita due database isolati: `fantaanalytics` per Python e `fantaanalytics_app` per Laravel.

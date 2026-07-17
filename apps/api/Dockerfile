@@ -5,6 +5,9 @@ RUN composer install --no-dev --no-interaction --no-scripts --prefer-dist --opti
 
 FROM php:8.4-cli-alpine
 WORKDIR /app
+RUN apk add --no-cache postgresql-dev $PHPIZE_DEPS \
+    && docker-php-ext-install pdo_pgsql \
+    && apk del $PHPIZE_DEPS
 COPY apps/api ./
 COPY --from=dependencies /app/vendor ./vendor
 RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs \

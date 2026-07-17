@@ -9,3 +9,6 @@
 - Gli errori upstream espongono solo codice, messaggio italiano e request ID; URL interni, stack trace e credenziali non sono restituiti.
 - `ANALYTICS_BASE_URL` è configurazione controllata dall'operatore, mai input utente; i filtri proxy sono validati tramite allowlist.
 - La `APP_KEY` di default nel Compose è esclusivamente locale e deve essere sostituita con un secret esterno in ambienti reali.
+- `X-User-ID` non è autenticazione sicura: è limitato al milestone di sviluppo e deve essere rimosso prima di esporre le API.
+- Le password sono hashate dal cast Eloquent e nascoste dalla serializzazione; il seed usa solo credenziali fittizie.
+- I due database PostgreSQL condividono oggi l'utente locale del container; la produzione dovrà usare ruoli distinti con privilegi minimi.

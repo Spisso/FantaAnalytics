@@ -36,6 +36,7 @@ Con l'ambiente storico locale: `venv/bin/python -m unittest discover -s tests -v
 - Gli import sono best-effort per default; `--strict` conserva diagnostica/raw record e non persiste player del file con errori.
 - Repository e dominio restano separati dalle query SQL; PostgreSQL è il target successivo, SQLite è il backend locale e di test corrente.
 - Laravel possiede dati applicativi (utenti, leghe, aste, rose, watchlist e note) e non interroga direttamente le tabelle possedute da analytics.
+- Il database Laravel è `fantaanalytics_app`; il database Analytics è `fantaanalytics`. Non creare FK tra i due.
 - I contratti HTTP versionati in `contracts/` sono il solo confine Laravel/Python.
 - Gli adapter dati separano fetch, salvataggio raw, parsing, normalizzazione ed export; mai aggirare CAPTCHA o controlli d'accesso.
 - Non versionare segreti, ambienti virtuali, database locali, cache o dataset raw voluminosi.

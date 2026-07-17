@@ -17,6 +17,8 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('locale', 10)->default('it');
+            $table->string('timezone', 64)->default('Europe/Rome');
             $table->rememberToken();
             $table->timestamps();
         });

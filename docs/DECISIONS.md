@@ -11,3 +11,6 @@
 - **ADR-009 — Ownership per servizio.** Analytics possiede dati e calcoli dei giocatori; Laravel possiede il futuro dominio utente/fantacalcio. Nessuna query SQL attraversa il confine: l'integrazione usa API HTTP e OpenAPI versionato.
 - **ADR-010 — Laravel come gateway pubblico.** Laravel 12 espone `/api/v1`, valida una allowlist di filtri e usa un client HTTP centralizzato con timeout, retry limitato, DTO ed errori stabili.
 - **ADR-011 — Porta Laravel locale 8081.** La porta 8080 era già occupata da un servizio esterno durante la verifica; il container ascolta 8080 internamente ed è pubblicato su 8081 senza alterare container non appartenenti al progetto.
+- **ADR-012 — Due database PostgreSQL.** Analytics usa `fantaanalytics`, Laravel usa `fantaanalytics_app` nello stesso container locale. Migrazioni e ownership restano indipendenti; `analytics_player_id` sarà un identificatore esterno senza FK.
+- **ADR-013 — Autenticazione temporanea esplicita.** Le API lega usano `X-User-ID` soltanto nel milestone foundation per rendere testabili le policy. Deve essere sostituito da autenticazione token prima dell'uso multiutente reale.
+- **ADR-014 — Owner partecipante.** La creazione di una lega aggiunge automaticamente il proprietario come partecipante attivo al posto 1 con il budget iniziale.
