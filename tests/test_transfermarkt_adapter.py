@@ -118,6 +118,76 @@ class TransfermarktAdapterTest(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("Transfermarkt non raggiungibile", errors.getvalue())
 
+    def test_cli_dry_run_does_not_create_database(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "must-not-exist.db"
+            with (
+                patch(
+                    "scraper.transfermarkt.TransfermarktScraper.get_players",
+                    return_value=[self.player],
+                ),
+                redirect_stdout(StringIO()) as output,
+            ):
+                status = cli_main(
+                    [
+                        "scrape-transfermarkt",
+                        "--season",
+                        "2026-27",
+                        "--database",
+                        str(database),
+                        "--max-clubs",
+                        "1",
+                        "--max-players",
+                        "3",
+                        "--dry-run",
+                    ]
+                )
+            self.assertEqual(status, 0)
+            self.assertFalse(database.exists())
+            self.assertIn("Dry run: 1 record validi", output.getvalue())
+
+    def test_cli_dry_run_writes_csv_only_with_explicit_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "preview.csv"
+            with (
+                patch(
+                    "scraper.transfermarkt.TransfermarktScraper.get_players",
+                    return_value=[self.player],
+                ),
+                redirect_stdout(StringIO()),
+            ):
+                status = cli_main(
+                    [
+                        "scrape-transfermarkt",
+                        "--season",
+                        "2026-27",
+                        "--dry-run",
+                        "--output",
+                        str(destination),
+                    ]
+                )
+            self.assertEqual(status, 0)
+            self.assertTrue(destination.exists())
+            with destination.open(encoding="utf-8", newline="") as handle:
+                self.assertEqual(next(csv.DictReader(handle))["external_id"], "transfermarkt:406625")
+
+    def test_cli_rejects_non_positive_preview_limits(self):
+        for option in ("--max-clubs", "--max-players"):
+            with self.subTest(option=option), redirect_stderr(StringIO()) as errors:
+                with self.assertRaises(SystemExit) as raised:
+                    cli_main(
+                        [
+                            "scrape-transfermarkt",
+                            "--season",
+                            "2026-27",
+                            option,
+                            "0",
+                            "--dry-run",
+                        ]
+                    )
+            self.assertEqual(raised.exception.code, 2)
+            self.assertIn("almeno 1", errors.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

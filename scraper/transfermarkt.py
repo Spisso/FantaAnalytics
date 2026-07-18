@@ -19,6 +19,10 @@ class TransfermarktScraper:
         self.retries = max(1, retries)
         self.sleeper = sleeper or time.sleep
         self._request_count = 0
+        self.discovered_club_count = 0
+        self.processed_clubs = []
+        self.requested_profile_count = 0
+        self.profile_errors = []
 
     @classmethod
     def extract_external_id(cls, profile_url):
@@ -64,23 +68,38 @@ class TransfermarktScraper:
                 urls.append(href)
         return urls
 
-    def get_players(self):
+    def get_players(self, max_clubs=None, max_players=None):
+        self.discovered_club_count = 0
+        self.processed_clubs = []
+        self.requested_profile_count = 0
+        self.profile_errors = []
         candidates = {}
-        for href in self.get_club_roster_urls():
+        roster_urls = self.get_club_roster_urls()
+        self.discovered_club_count = len(roster_urls)
+        if max_clubs is not None:
+            roster_urls = roster_urls[:max_clubs]
+        for href in roster_urls:
             roster_soup = self.parse_page(urljoin(self.BASE_URL, href))
             team_name = self._extract_team_name(roster_soup)
+            self.processed_clubs.append(team_name or href)
             for link in roster_soup.select('a[href*="/profil/spieler/"]'):
                 profile_url = self.canonical_profile_url(link.get("href"))
                 external_id = self.extract_external_id(profile_url)
                 full_name = link.get_text(" ", strip=True)
                 if external_id and full_name and external_id not in candidates:
                     candidates[external_id] = (full_name, profile_url, team_name)
+                    if max_players is not None and len(candidates) >= max_players:
+                        break
+            if max_players is not None and len(candidates) >= max_players:
+                break
 
         players = []
         for external_id, (full_name, profile_url, roster_team) in candidates.items():
+            self.requested_profile_count += 1
             try:
                 player_soup = self.parse_page(profile_url)
-            except requests.RequestException:
+            except requests.RequestException as exc:
+                self.profile_errors.append({"profile_url": profile_url, "error": str(exc)})
                 continue
             players.append(
                 {

@@ -40,7 +40,8 @@ Import Serie A tramite fixture/mock completato; verifica live separata. Vue rest
 
 ## Tests last executed
 
-- `make test` — 36 test superati, inclusi adapter/scraper senza richieste HTTP reali.
+- preview live controllata Transfermarkt — 1 club, 3 profili, 3 record validi, nessun campo mancante e nessuna persistenza.
+- `make test` — 42 test superati, inclusi limiti/dry-run scraper senza richieste HTTP reali.
 - `make db-upgrade DATABASE=/private/tmp/fantaanalytics-accept.test.db` — migrazione `001` applicata.
 - `make import-sample DATABASE=/private/tmp/fantaanalytics-accept.test.db` — 11 player inseriti.
 - `make list-players DATABASE=/private/tmp/fantaanalytics-accept.test.db` — 11 player interrogati.
