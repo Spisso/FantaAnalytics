@@ -27,6 +27,8 @@ services:
       ANALYTICS_API_PORT: 8000
     ports:
       - "${ANALYTICS_API_PORT:-8000}:8000"
+    volumes:
+      - fantaanalytics_raw_data:/app/data/raw
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,3 +71,4 @@ services:
     restart: unless-stopped
 volumes:
   fantaanalytics_postgres_data:
+  fantaanalytics_raw_data:

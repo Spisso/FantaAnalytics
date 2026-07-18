@@ -14,7 +14,7 @@ FantaAnalytics è una piattaforma in italiano per analizzare giocatori e prepara
 - API WSGI di sola lettura con liveness, readiness, player e import run, coperta da OpenAPI;
 - gateway pubblico Laravel 12 con client Analytics tipizzato, validazione ed error handling;
 - stack Docker PostgreSQL → Analytics → Laravel;
-- scraper Transfermarkt storico con fallback CSV (non necessario né verificato live).
+- adapter Transfermarkt responsabile con export CSV canonico e import SQLAlchemy (non verificato live).
 
 Le proiezioni e i prezzi sono supporto decisionale, non garanzie; dati e disponibilità dei giocatori possono cambiare.
 
@@ -48,6 +48,43 @@ make list-players
 
 L'import conserva ogni riga raw, errori strutturati e provenienza. A parità di fonte, stagione e checksum del file, un re-import è ignorato; `--force` riesegue il matching e aggiorna solo i campi cambiati. SQLite resta il default locale; `DATABASE_URL` seleziona PostgreSQL per API, CLI, repository e Alembic.
 
+### Import demo e Serie A
+
+L'import demo offline popola per default `data/processed/fantaanalytics.db`:
+
+```bash
+make import-sample
+make list-players
+```
+
+L'adapter Transfermarkt usa lo stesso database canonico e può conservare il CSV normalizzato:
+
+```bash
+make import-serie-a
+python -m services.analytics.fantaanalytics.cli scrape-transfermarkt \
+  --season 2026-27 --database data/processed/fantaanalytics.db \
+  --output data/raw/transfermarkt_players.csv --pause 1 --retries 2
+python -m services.analytics.fantaanalytics.cli list-players \
+  --database data/processed/fantaanalytics.db --season 2026-27
+```
+
+Con Docker, lo stesso target esegue migrazione e import dentro il container Analytics:
+
+```bash
+make stack-up
+make import-serie-a IMPORT_RUNTIME=docker
+```
+
+I giocatori sono consultabili su `http://localhost:8000/api/v1/players?season=2026-27`
+e tramite Laravel su `http://localhost:8081/api/v1/players?season=2026-27`.
+
+Nel CSV e nel contratto canonico `profile_url` è esposto come `source_url`. Viene
+persistito in `player_source_mappings` insieme all'external ID, mentre non è duplicato
+nella tabella `players` e non è incluso oggi nella risposta della read API. Il valore di
+mercato viene normalizzato in `market_value_eur` e validato nel payload `player.v1`; la
+baseline SQL corrente ne conserva il valore sorgente nei raw record, ma non mantiene
+ancora una serie storica di valutazioni dedicata.
+
 ## Architettura
 
 ```text
@@ -62,7 +99,7 @@ Vedi [ARCHITECTURE.md](docs/ARCHITECTURE.md) e lo stato reale in [PROGRESS.md](d
 
 ## Dati
 
-`data/samples/demo_players.csv` contiene dati fittizi, riproducibili e versionati. I dati raw, gli export e i database locali non vengono versionati. Per le fonti esterne, rispettare licenze, termini e limiti di accesso: nessun meccanismo anti-bot deve essere aggirato.
+`data/samples/demo_players.csv` contiene dati fittizi, riproducibili e versionati. I dati raw, gli export e i database locali non vengono versionati. Per le fonti esterne, rispettare licenze, termini e limiti di accesso: nessun meccanismo anti-bot deve essere aggirato. L'adapter deduplica i profili prima del fetch, usa pause configurabili e retry limitati; CAPTCHA, blocchi o modifiche HTML causano un errore leggibile. Verificare sempre che l'uso sia consentito dai termini della fonte.
 
 ## Sviluppo
 

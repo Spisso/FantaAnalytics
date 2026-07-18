@@ -4,9 +4,11 @@ import argparse
 import csv
 import json
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, Dict
 
+import requests
 from alembic import command as alembic_command
 from alembic.config import Config as AlembicConfig
 
@@ -16,6 +18,7 @@ from .persistence import CanonicalRepository, MigrationRunner
 from .pricing import LeagueConfig, predict_prices
 from .scoring import score_players
 from .settings import Settings
+from .transfermarkt_adapter import write_canonical_csv
 
 DEFAULT_DATABASE = Settings.from_env().database_url
 
@@ -90,6 +93,48 @@ def run_import(args: argparse.Namespace) -> int:
     return 2 if args.strict and result.error_rows else 0
 
 
+def run_scrape_transfermarkt(args: argparse.Namespace) -> int:
+    from scraper.transfermarkt import TransfermarktScraper
+
+    scraper = TransfermarktScraper(
+        season=args.season,
+        pause_seconds=args.pause,
+        retries=args.retries,
+    )
+    try:
+        players = scraper.get_players()
+    except requests.RequestException as exc:
+        # Requests errors are intentionally converted at this adapter boundary: no CAPTCHA or
+        # access-control fallback is attempted.
+        raise RuntimeError(f"Transfermarkt non raggiungibile o accesso rifiutato: {exc}") from exc
+    if not players:
+        raise RuntimeError("Transfermarkt non ha restituito giocatori; import non eseguito")
+
+    temporary = None
+    if args.output:
+        destination = Path(args.output)
+    else:
+        temporary = tempfile.TemporaryDirectory(prefix="fantaanalytics-transfermarkt-")
+        destination = Path(temporary.name) / "transfermarkt_players.csv"
+    try:
+        csv_path, rows = write_canonical_csv(players, destination)
+        result = PlayerImportService(CanonicalRepository(args.database)).import_file(
+            csv_path, "transfermarkt", args.season, force=args.force
+        )
+    finally:
+        if temporary:
+            temporary.cleanup()
+    print(f"Recuperati: {len(players)}; canonici: {len(rows)}")
+    print(
+        f"Totale: {result.total_rows}; inseriti: {result.inserted_rows}; "
+        f"aggiornati: {result.updated_rows}; saltati: {result.skipped_rows}; "
+        f"errori: {result.error_rows}"
+    )
+    if args.output:
+        print(f"CSV canonico: {csv_path}")
+    return 0 if not result.error_rows else 1
+
+
 def run_list(args: argparse.Namespace) -> int:
     players = CanonicalRepository(args.database).list_players(
         args.role, args.team, args.season, args.limit
@@ -144,7 +189,7 @@ def run_reset_test(database: Path) -> int:
     return run_upgrade(database)
 
 
-def main() -> int:
+def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="FantaAnalytics deterministic analytics")
     subparsers = parser.add_subparsers(dest="command", required=True)
     score = subparsers.add_parser("score", help="Importa CSV e genera score/prezzi")
@@ -168,6 +213,16 @@ def main() -> int:
     imported.add_argument("--force", action="store_true")
     imported.add_argument("--json-output", action="store_true")
     imported.set_defaults(handler=run_import)
+    scraped = subparsers.add_parser(
+        "scrape-transfermarkt", help="Recupera Transfermarkt e importa nel repository canonico"
+    )
+    scraped.add_argument("--season", required=True)
+    scraped.add_argument("--database", default=DEFAULT_DATABASE)
+    scraped.add_argument("--output", help="Conserva anche il CSV canonico in questo percorso")
+    scraped.add_argument("--force", action="store_true")
+    scraped.add_argument("--pause", type=float, default=1.0)
+    scraped.add_argument("--retries", type=int, default=2)
+    scraped.set_defaults(handler=run_scrape_transfermarkt)
     listed = subparsers.add_parser("list-players", help="Elenca i giocatori canonici importati")
     listed.add_argument("--database", default=DEFAULT_DATABASE)
     listed.add_argument("--role", choices=["P", "D", "C", "A"])
@@ -176,7 +231,7 @@ def main() -> int:
     listed.add_argument("--limit", type=int, default=50)
     listed.add_argument("--json-output", action="store_true")
     listed.set_defaults(handler=run_list)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     try:
         if args.command == "score":
             return run_score(args.source, args.destination)

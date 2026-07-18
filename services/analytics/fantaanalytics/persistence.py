@@ -382,7 +382,18 @@ class CanonicalRepository:
                 "SELECT id FROM player_source_mappings WHERE data_source_id=? AND external_source_id=?",
                 (source_id, external_id),
             ).fetchone()
-            if not mapping:
+            if mapping:
+                connection.execute(
+                    """UPDATE player_source_mappings
+                       SET source_url=?, source_display_name=?, updated_at=? WHERE id=?""",
+                    (
+                        payload.get("source_url"),
+                        payload["full_name"],
+                        now,
+                        mapping._mapping["id"],
+                    ),
+                )
+            else:
                 connection.execute(
                     """INSERT INTO player_source_mappings(
                         player_id,data_source_id,external_source_id,source_url,source_display_name,

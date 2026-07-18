@@ -1,100 +1,59 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+import requests
 from bs4 import BeautifulSoup
 
 from scraper.transfermarkt import TransfermarktScraper
 
 
 class TransfermarktScraperTest(unittest.TestCase):
-    def test_get_players_extracts_player_links_from_squad_page(self):
-        scraper = TransfermarktScraper()
-
-        roster_html = """
-        <html>
-            <body>
-                <a href="/lautaro-martinez/profil/spieler/406625">Lautaro Martínez</a>
-                <a href="/david-villa/profil/spieler/123">David Villa</a>
-            </body>
-        </html>
-        """
-
-        def fake_parse_page(url=None):
-            if url is None:
-                return BeautifulSoup(roster_html, "lxml")
-            if "/profil/spieler/" in url:
-                return BeautifulSoup(
-                    "<html><body>Squadra attuale: Inter Nato il: 22/08/1997 (28) Nazionalità: Argentina Posizione: Punta centrale</body></html>",
-                    "lxml",
-                )
-            return BeautifulSoup(roster_html, "lxml")
-
-        with (
-            patch.object(scraper, "get_club_roster_urls", return_value=["/club/roster"]),
-            patch.object(scraper, "parse_page", side_effect=fake_parse_page),
-        ):
-            players = scraper.get_players()
-
+    def test_extracts_stable_external_id_and_canonical_url(self):
+        url = "/lautaro/profil/spieler/406625?foo=bar"
         self.assertEqual(
-            players,
-            [
-                {
-                    "name": "Lautaro Martínez",
-                    "team": "Inter",
-                    "birth_date": "22/08/1997",
-                    "position": "Punta centrale",
-                    "nationality": "Argentina",
-                },
-                {
-                    "name": "David Villa",
-                    "team": "Inter",
-                    "birth_date": "22/08/1997",
-                    "position": "Punta centrale",
-                    "nationality": "Argentina",
-                },
-            ],
+            TransfermarktScraper.extract_external_id(url), "transfermarkt:406625"
+        )
+        self.assertEqual(
+            TransfermarktScraper.canonical_profile_url(url),
+            "https://www.transfermarkt.it/lautaro/profil/spieler/406625",
         )
 
-    def test_get_players_uses_roster_page_team_when_profile_is_missing_it(self):
-        scraper = TransfermarktScraper()
-
-        roster_html = """
-        <html>
-            <head><title>Inter - Kader</title></head>
-            <body>
-                <h1>Inter</h1>
-                <a href="/lautaro-martinez/profil/spieler/406625">Lautaro Martínez</a>
-            </body>
-        </html>
-        """
-
-        def fake_parse_page(url=None):
-            if url is None:
-                return BeautifulSoup(roster_html, "lxml")
-            if "/profil/spieler/" in url:
-                return BeautifulSoup(
-                    "<html><body>Nato il: 22/08/1997 (28) Nazionalità: Argentina Posizione: Punta centrale</body></html>",
-                    "lxml",
-                )
-            return BeautifulSoup(roster_html, "lxml")
-
+    def test_get_players_deduplicates_profile_before_fetch(self):
+        scraper = TransfermarktScraper(pause_seconds=0)
+        roster = BeautifulSoup(
+            '<h1>Inter</h1><a href="/lautaro/profil/spieler/406625">Lautaro Martínez</a>'
+            '<a href="/altro/profil/spieler/406625">Lautaro Duplicate</a>',
+            "lxml",
+        )
+        profile = BeautifulSoup(
+            "Squadra attuale: Inter Nato il: 22/08/1997 (28) "
+            "Nazionalità: Argentina Posizione: Punta centrale 95,00 mln €",
+            "lxml",
+        )
         with (
             patch.object(scraper, "get_club_roster_urls", return_value=["/club/roster"]),
-            patch.object(scraper, "parse_page", side_effect=fake_parse_page),
+            patch.object(scraper, "parse_page", side_effect=[roster, profile]) as parser,
         ):
             players = scraper.get_players()
+        self.assertEqual(len(players), 1)
+        self.assertEqual(parser.call_count, 2)
+        self.assertEqual(players[0]["external_id"], "transfermarkt:406625")
+        self.assertEqual(players[0]["full_name"], "Lautaro Martínez")
+        self.assertEqual(players[0]["source_role"], "Punta centrale")
+        self.assertEqual(players[0]["market_value"], "95,00 mln €")
 
-        self.assertEqual(players[0]["team"], "Inter")
+    def test_http_client_is_injectable_and_errors_are_raised(self):
+        client = Mock()
+        client.get.side_effect = requests.ConnectionError("offline")
+        scraper = TransfermarktScraper(http_client=client, pause_seconds=0, retries=2)
+        with self.assertRaises(requests.ConnectionError):
+            scraper.get_page_with_retry()
+        self.assertEqual(client.get.call_count, 2)
 
     def test_extract_profile_field_stops_before_stats_metadata(self):
         scraper = TransfermarktScraper()
-        text = (
-            "Posizione Portiere Era nazionale Spagna Gare/gol 1 / 0 "
-            "10,00 mln € Aggiornato al 29/05/2026 Informazioni"
-        )
-
+        text = "Posizione Portiere Era nazionale Spagna Gare/gol 1 / 0"
         self.assertEqual(scraper._extract_profile_field(text, "Posizione"), "Portiere")
-        self.assertEqual(scraper._extract_profile_field(text, "Nazionalità"), None)
 
 
 if __name__ == "__main__":

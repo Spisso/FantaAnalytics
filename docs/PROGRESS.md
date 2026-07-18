@@ -2,11 +2,11 @@
 
 ## Last verified milestone
 
-Laravel league domain foundation su database PostgreSQL applicativo separato.
+Adapter Transfermarkt collegato alla pipeline canonica Analytics.
 
 ## Currently implementing
 
-CRUD leghe, regole, roster rules, partecipanti e policy verificati; Vue resta fuori scope.
+Import Serie A tramite fixture/mock completato; verifica live separata. Vue resta fuori scope.
 
 ## Completed
 
@@ -28,6 +28,9 @@ CRUD leghe, regole, roster rules, partecipanti e policy verificati; Vue resta fu
 - [x] Aggregate lega transazionale, owner participant, rules e roster defaults.
 - [x] Policy owner/participant, guest participant, participant limit e seed demo idempotente.
 - [x] API CRUD leghe, rules, roster rules e participants.
+- [x] Scraper Transfermarkt con external ID stabile, URL deduplicate, pausa e retry limitati.
+- [x] Adapter CSV canonico e comando `scrape-transfermarkt` con import SQLAlchemy idempotente.
+- [x] `main.py`, Makefile e container Analytics usano la pipeline canonica, non il DB legacy.
 
 ## Remaining
 
@@ -37,7 +40,7 @@ CRUD leghe, regole, roster rules, partecipanti e policy verificati; Vue resta fu
 
 ## Tests last executed
 
-- `make test` — 31 test superati (27 originali più settings, readiness e redazione segreti).
+- `make test` — 36 test superati, inclusi adapter/scraper senza richieste HTTP reali.
 - `make db-upgrade DATABASE=/private/tmp/fantaanalytics-accept.test.db` — migrazione `001` applicata.
 - `make import-sample DATABASE=/private/tmp/fantaanalytics-accept.test.db` — 11 player inseriti.
 - `make list-players DATABASE=/private/tmp/fantaanalytics-accept.test.db` — 11 player interrogati.
@@ -52,6 +55,9 @@ CRUD leghe, regole, roster rules, partecipanti e policy verificati; Vue resta fu
 - `make api-lint` — Laravel Pint superato.
 - endpoint Laravel reali — health/status/list/detail/import-runs HTTP 200 su porta 8081.
 - Analytics fermato — Laravel health 200, status degradato 200, players 503; ripristino verificato.
+- build Docker Analytics/Laravel e `make stack-test` — superati nella revisione finale.
+- import Transfermarkt con mock nel container su PostgreSQL temporaneo — 1 player inserito, CSV raw scrivibile e cleanup completato.
+- `api-db-create` — creazione e seconda esecuzione idempotente verificate con `fantaanalytics_app_codex_test`, poi rimosso.
 
 ## Known limitations
 
@@ -59,8 +65,9 @@ CRUD leghe, regole, roster rules, partecipanti e policy verificati; Vue resta fu
 - Il prezzo è una baseline deterministica, non un modello addestrato né una raccomandazione d'asta live.
 - Vue, autenticazione e dominio leghe/aste/rose non sono ancora implementati.
 - SQLite è il backend locale/test; PostgreSQL è il backend Docker verificato.
-- `database/transfermarkt.db` è ancora nel commit corrente: il sandbox non permette scritture nell'indice Git per eseguire il richiesto `git rm --cached`.
+- Lo scraping live dipende da raggiungibilità, termini e markup Transfermarkt; CAPTCHA e controlli di accesso non vengono aggirati.
+- `database/transfermarkt.db` non è presente nell'indice Git; `database/*.db`, `*.sqlite3` e `data/raw/*` restano ignorati.
 
 ## Exact next action
 
-Progettare l'aggregate asta (eventi, budget, acquisti e undo) senza ancora introdurre Vue o realtime.
+Verificare manualmente l'import contro la fonte solo se consentito, poi riprendere il dominio asta senza introdurre Vue o realtime.
