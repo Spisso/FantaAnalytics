@@ -1,0 +1,127 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "FantaAnalytics: Start Backend",
+      "type": "shell",
+      "command": "./scripts/dev/start-backend.sh",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/zsh", "args": ["-l", "-c"] }
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "name": "FantaAnalytics Backend",
+        "reveal": "always",
+        "group": "fantaanalytics",
+        "focus": false
+      },
+      "runOptions": { "instanceLimit": 1 },
+      "problemMatcher": []
+    },
+    {
+      "label": "FantaAnalytics: Start Frontend",
+      "type": "shell",
+      "command": "./scripts/dev/start-frontend.sh",
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/zsh", "args": ["-l", "-c"] }
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "name": "FantaAnalytics Frontend",
+        "reveal": "always",
+        "group": "fantaanalytics",
+        "focus": false
+      },
+      "runOptions": { "instanceLimit": 1 },
+      "problemMatcher": {
+        "owner": "fantaanalytics-vite",
+        "pattern": { "regexp": ".*" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "(?:vite|Starting)",
+          "endsPattern": "(?:Local:|ready in)"
+        }
+      }
+    },
+    {
+      "label": "FantaAnalytics: Open App",
+      "type": "shell",
+      "command": "./scripts/dev/open-app.sh",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/zsh", "args": ["-l", "-c"] }
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "never",
+        "group": "fantaanalytics"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FantaAnalytics: Start All",
+      "dependsOn": [
+        "FantaAnalytics: Start Backend",
+        "FantaAnalytics: Start Frontend",
+        "FantaAnalytics: Open App"
+      ],
+      "dependsOrder": "sequence",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "FantaAnalytics: Stop All",
+      "type": "shell",
+      "command": "./scripts/dev/stop.sh",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/zsh", "args": ["-l", "-c"] }
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "name": "FantaAnalytics Backend",
+        "reveal": "always",
+        "group": "fantaanalytics"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FantaAnalytics: Show Logs",
+      "type": "shell",
+      "command": "source ./scripts/dev/stack-env.sh && docker compose logs --tail=100 -f postgres analytics api",
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/zsh", "args": ["-l", "-c"] }
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "name": "FantaAnalytics Logs",
+        "reveal": "always",
+        "group": "fantaanalytics",
+        "focus": false
+      },
+      "runOptions": { "instanceLimit": 1 },
+      "problemMatcher": []
+    },
+    {
+      "label": "FantaAnalytics: Health Check",
+      "type": "shell",
+      "command": "./scripts/dev/health-check.sh",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/zsh", "args": ["-l", "-c"] }
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "name": "FantaAnalytics Health",
+        "reveal": "always",
+        "group": "fantaanalytics"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
