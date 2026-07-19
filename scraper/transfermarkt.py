@@ -24,6 +24,7 @@ class TransfermarktScraper:
         self.processed_clubs = []
         self.requested_profile_count = 0
         self.profile_errors = []
+        self.last_response = None
 
     @classmethod
     def extract_external_id(cls, profile_url):
@@ -47,6 +48,7 @@ class TransfermarktScraper:
         self._request_count += 1
         response = self.http_client.get(url or self.url, headers=self.headers, timeout=20)
         response.raise_for_status()
+        self.last_response = response
         return response.text
 
     def get_page_with_retry(self, url=None, retries=None):
@@ -101,17 +103,30 @@ class TransfermarktScraper:
         return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
 
     def get_players_for_club(self, roster_url, max_players=None):
-        roster_soup = self.parse_page(self.canonical_roster_url(roster_url))
+        requested_roster_url = self.canonical_roster_url(roster_url)
+        roster_soup = self.parse_page(requested_roster_url)
+        response = self.last_response
         team_name = self._extract_team_name(roster_soup)
+        profile_anchors = roster_soup.select('a[href*="/profil/spieler/"]')
+        discarded = []
         candidates = {}
-        for link in roster_soup.select('a[href*="/profil/spieler/"]'):
+        all_external_ids = set()
+        for link in profile_anchors:
             profile_url = self.canonical_profile_url(link.get("href"))
             external_id = self.extract_external_id(profile_url)
             full_name = link.get_text(" ", strip=True)
-            if external_id and full_name and external_id not in candidates:
+            if external_id:
+                all_external_ids.add(external_id)
+            if max_players is not None and len(candidates) >= max_players:
+                discarded.append({"reason": "limit_reached", "href": link.get("href")})
+            elif not external_id:
+                discarded.append({"reason": "external_id_absent", "href": link.get("href"), "name": full_name})
+            elif not full_name:
+                discarded.append({"reason": "empty_name", "href": link.get("href"), "external_id": external_id})
+            elif external_id in candidates:
+                discarded.append({"reason": "duplicate", "href": link.get("href"), "external_id": external_id, "name": full_name})
+            else:
                 candidates[external_id] = (full_name, profile_url, team_name)
-                if max_players is not None and len(candidates) >= max_players:
-                    break
         players = []
         errors = []
         for external_id, (full_name, profile_url, roster_team) in candidates.items():
@@ -136,7 +151,24 @@ class TransfermarktScraper:
                     "market_value": self._extract_market_value(player_soup),
                 }
             )
-        return players, {"discovered": len(candidates), "errors": errors, "team": team_name}
+        return players, {
+            "requested_url": requested_roster_url,
+            "final_url": response.url if response is not None else requested_roster_url,
+            "http_status": response.status_code if response is not None else None,
+            "response_length": len(response.text) if response is not None else None,
+            "title": roster_soup.title.get_text(" ", strip=True) if roster_soup.title else None,
+            "team": team_name,
+            "total_anchors": len(roster_soup.find_all("a")),
+            "profile_anchors": len(profile_anchors),
+            "unique_external_ids": len(all_external_ids),
+            "links_discarded": discarded,
+            "discovered": len(candidates),
+            "profiles_requested": len(candidates),
+            "profiles_succeeded": len(players),
+            "profiles_failed": len(errors),
+            "records_valid": len(players),
+            "errors": errors,
+        }
 
     def get_players(self, max_clubs=None, max_players=None):
         self.discovered_club_count = 0

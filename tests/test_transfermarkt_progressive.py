@@ -13,7 +13,10 @@ from services.analytics.fantaanalytics.transfermarkt_checkpoint import (
     new_checkpoint,
     save_checkpoint,
 )
-from services.analytics.fantaanalytics.transfermarkt_progressive import run_progressive_scrape
+from services.analytics.fantaanalytics.transfermarkt_progressive import (
+    _club_matches,
+    run_progressive_scrape,
+)
 
 
 def player(identifier, name):
@@ -36,6 +39,7 @@ class FakeScraper:
         {"external_id": "transfermarkt-club:3", "name": "Gamma", "roster_url": "/gamma"},
     ]
     failures = set()
+    partial_errors = set()
     calls = []
 
     def __init__(self, **_kwargs):
@@ -50,7 +54,16 @@ class FakeScraper:
             raise RuntimeError("temporary failure")
         identifier = {"/alpha": "1", "/beta": "2", "/gamma": "3"}[roster_url]
         rows = [player(identifier, f"Player {identifier}")]
-        return rows[:max_players] if max_players else rows, {"discovered": 1, "errors": [], "team": "Inter"}
+        errors = ([{"profile_url": "/missing", "error": "profile unavailable"}]
+                  if roster_url in self.partial_errors else [])
+        return rows[:max_players] if max_players else rows, {
+            "discovered": 1,
+            "errors": errors,
+            "profiles_requested": len(rows),
+            "profiles_succeeded": len(rows),
+            "profiles_failed": len(errors),
+            "team": "Inter",
+        }
 
 
 def args(root, **overrides):
@@ -67,6 +80,7 @@ def args(root, **overrides):
 class ProgressiveImportTest(unittest.TestCase):
     def setUp(self):
         FakeScraper.failures = set()
+        FakeScraper.partial_errors = set()
         FakeScraper.calls = []
 
     def test_checkpoint_creation_and_resume_are_idempotent(self):
@@ -116,6 +130,39 @@ class ProgressiveImportTest(unittest.TestCase):
             self.assertEqual(FakeScraper.calls, ["/beta"])
             payload = json.loads((root / "checkpoint.json").read_text())
             self.assertFalse(payload["failed_clubs"])
+
+    def test_resume_retries_incomplete_club(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            MigrationRunner(root / "canonical.test.db").upgrade()
+            FakeScraper.failures = {"/alpha"}
+            with patch("services.analytics.fantaanalytics.transfermarkt_progressive.TransfermarktScraper", FakeScraper):
+                failed = run_progressive_scrape(args(root, resume=True, continue_on_error=True))
+            self.assertEqual(failed["clubs_failed"], 1)
+            FakeScraper.failures = set()
+            with patch("services.analytics.fantaanalytics.transfermarkt_progressive.TransfermarktScraper", FakeScraper):
+                retried = run_progressive_scrape(args(root, resume=True))
+            self.assertEqual(retried["clubs_completed"], 1)
+            self.assertEqual(FakeScraper.calls, ["/alpha"])
+
+    def test_profile_errors_leave_club_failed_in_checkpoint(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            MigrationRunner(root / "canonical.test.db").upgrade()
+            FakeScraper.partial_errors = {"/alpha"}
+            with patch("services.analytics.fantaanalytics.transfermarkt_progressive.TransfermarktScraper", FakeScraper):
+                result = run_progressive_scrape(args(root, max_clubs=1, continue_on_error=True))
+            self.assertEqual(result["clubs_completed"], 0)
+            self.assertEqual(result["clubs_failed"], 1)
+            payload = json.loads((root / "checkpoint.json").read_text())
+            self.assertFalse(payload["completed_clubs"])
+            self.assertEqual(payload["failed_clubs"][0]["profiles_failed"], 1)
+
+    def test_inter_selection_does_not_match_inter_u23(self):
+        inter = {"name": "Inter", "external_id": "transfermarkt-club:46"}
+        inter_u23 = {"name": "Inter U23", "external_id": "transfermarkt-club:123"}
+        self.assertTrue(_club_matches(inter, "Inter"))
+        self.assertFalse(_club_matches(inter_u23, "Inter"))
 
     def test_continue_on_error_and_checkpoint_stop(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -24,6 +24,10 @@ class NormalizationTest(unittest.TestCase):
     def test_maps_source_roles_and_prefers_official_role(self):
         self.assertEqual(infer_fantasy_role("Punta centrale"), "A")
         self.assertEqual(infer_fantasy_role("Punta centrale", "C"), "C")
+        self.assertEqual(infer_fantasy_role("Terzino sinistro"), "D")
+        self.assertEqual(infer_fantasy_role("Mediano"), "C")
+        self.assertEqual(infer_fantasy_role("Centrocampista"), "C")
+        self.assertEqual(infer_fantasy_role("Esterno di destra"), "A")
 
 
 class CsvImporterTest(unittest.TestCase):

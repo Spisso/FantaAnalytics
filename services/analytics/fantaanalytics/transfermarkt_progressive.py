@@ -93,7 +93,11 @@ def run_progressive_scrape(args):
         "clubs_skipped": 0,
         "clubs_failed": 0,
         "profiles_requested": 0,
+        "profiles_succeeded": 0,
+        "profiles_failed": 0,
         "valid_players": 0,
+        "records_valid": 0,
+        "records_imported": 0,
         "inserted_players": 0,
         "updated_players": 0,
         "skipped_players": 0,
@@ -105,42 +109,73 @@ def run_progressive_scrape(args):
         if args.resume and club["external_id"] in completed_ids:
             summary["clubs_skipped"] += 1
             continue
-        if club["external_id"] in failed_ids and not args.retry_failed:
-            summary["clubs_skipped"] += 1
-            continue
+        if args.retry_failed:
+            if club["external_id"] not in failed_ids:
+                summary["clubs_skipped"] += 1
+                continue
         if args.max_clubs is not None and summary["clubs_considered"] >= args.max_clubs:
             break
         summary["clubs_considered"] += 1
+        details = {}
+        valid_rows = 0
         try:
             players, details = scraper.get_players_for_club(club["roster_url"], args.max_players)
-            summary["profiles_requested"] += len(players) + len(details["errors"])
+            summary["profiles_requested"] += details.get("profiles_requested", len(players) + len(details["errors"]))
+            summary["profiles_succeeded"] += details.get("profiles_succeeded", len(players))
+            summary["profiles_failed"] += details.get("profiles_failed", len(details["errors"]))
             rows = canonicalize_players(players)
             session_rows.extend(players)
             valid_rows = len(rows)
+            validation_errors = 0
             import_result = None
-            if not args.dry_run:
-                with tempfile.TemporaryDirectory(prefix="fantaanalytics-club-") as directory:
-                    temporary_csv = Path(directory) / "players.csv"
-                    write_canonical_csv(players, temporary_csv)
-                    normalized, _issues = import_csv(temporary_csv)
-                    valid_rows = len(normalized)
+            with tempfile.TemporaryDirectory(prefix="fantaanalytics-club-") as directory:
+                temporary_csv = Path(directory) / "players.csv"
+                write_canonical_csv(players, temporary_csv)
+                normalized, issues = import_csv(temporary_csv)
+                valid_rows = len(normalized)
+                validation_errors = len(issues)
+                if not args.dry_run:
                     import_result = import_service.import_file(
                         temporary_csv, "transfermarkt", args.season, force=args.force
                     )
+            if import_result:
                 summary["inserted_players"] += import_result.inserted_rows
                 summary["updated_players"] += import_result.updated_rows
                 summary["skipped_players"] += import_result.skipped_rows
+                validation_errors = import_result.error_rows
+                summary["records_imported"] += import_result.inserted_rows + import_result.updated_rows
             summary["valid_players"] += valid_rows
+            summary["records_valid"] += valid_rows
             errors = details["errors"]
-            if errors:
-                raise RuntimeError(f"{len(errors)} profili non recuperati")
+            if errors or validation_errors:
+                problems = []
+                if errors:
+                    problems.append(f"{len(errors)} profili non recuperati")
+                if validation_errors:
+                    problems.append(f"{validation_errors} record non validi")
+                raise RuntimeError("; ".join(problems))
             completed_entry = {
                 "external_id": club["external_id"],
                 "name": details["team"] or club["name"],
                 "roster_url": club["roster_url"],
                 "players_discovered": details["discovered"],
+                "roster_url_final": details.get("final_url"),
+                "roster_http_status": details.get("http_status"),
+                "roster_response_length": details.get("response_length"),
+                "roster_title": details.get("title"),
+                "profile_anchors": details.get("profile_anchors"),
+                "unique_external_ids": details.get("unique_external_ids"),
+                "links_discarded": details.get("links_discarded", []),
                 "players_valid": valid_rows,
                 "players_imported": (
+                    (import_result.inserted_rows + import_result.updated_rows)
+                    if import_result
+                    else valid_rows
+                ),
+                "profiles_requested": details.get("profiles_requested", len(players)),
+                "profiles_failed": details.get("profiles_failed", len(errors)),
+                "records_valid": valid_rows,
+                "records_imported": (
                     (import_result.inserted_rows + import_result.updated_rows)
                     if import_result
                     else valid_rows
@@ -167,6 +202,17 @@ def run_progressive_scrape(args):
                 "name": club["name"],
                 "roster_url": club["roster_url"],
                 "error": str(exc),
+                "players_discovered": details.get("discovered") if "details" in locals() else None,
+                "roster_url_final": details.get("final_url") if "details" in locals() else None,
+                "roster_http_status": details.get("http_status") if "details" in locals() else None,
+                "roster_response_length": details.get("response_length") if "details" in locals() else None,
+                "roster_title": details.get("title") if "details" in locals() else None,
+                "profile_anchors": details.get("profile_anchors") if "details" in locals() else None,
+                "unique_external_ids": details.get("unique_external_ids") if "details" in locals() else None,
+                "links_discarded": details.get("links_discarded", []) if "details" in locals() else [],
+                "profiles_requested": details.get("profiles_requested") if "details" in locals() else None,
+                "profiles_failed": details.get("profiles_failed") if "details" in locals() else None,
+                "records_valid": valid_rows if "valid_rows" in locals() else None,
                 "attempts": (previous.get("attempts", 0) if previous else 0) + 1,
                 "failed_at": utc_now(),
             }

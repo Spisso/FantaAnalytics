@@ -152,6 +152,70 @@ class TransfermarktScraperTest(unittest.TestCase):
         self.assertEqual(scraper.requested_profile_count, 2)
         self.assertEqual(parser.call_count, 4)
 
+    def test_discovers_all_large_roster_players_and_reports_diagnostics(self):
+        scraper = TransfermarktScraper(pause_seconds=0)
+        roster = BeautifulSoup(
+            '<h1>Inter</h1>'
+            + "".join(
+                f'<a href="/player-{identifier}/profil/spieler/{identifier}">'
+                f'<span>Player {identifier}</span></a>'
+                for identifier in range(1, 27)
+            ),
+            "lxml",
+        )
+        profile = BeautifulSoup(
+            "Squadra attuale: Inter Nato il: 01/01/2000 "
+            "Nazionalità: Italia Posizione: Portiere",
+            "lxml",
+        )
+        response = Mock(status_code=200, url="https://www.transfermarkt.it/inter/kader/verein/46/saison_id/2026")
+        response.text = str(roster)
+        response.raise_for_status.return_value = None
+        profile_responses = []
+        for _ in range(26):
+            item = Mock(status_code=200, url="https://www.transfermarkt.it/player/profil/spieler/1")
+            item.text = str(profile)
+            item.raise_for_status.return_value = None
+            profile_responses.append(item)
+        client = Mock()
+        client.get.side_effect = [response, *profile_responses]
+        scraper = TransfermarktScraper(http_client=client, pause_seconds=0)
+        players, details = scraper.get_players_for_club(
+            "https://www.transfermarkt.it/inter/kader/verein/46/saison_id/2026"
+        )
+        self.assertEqual(len(players), 26)
+        self.assertEqual(details["profile_anchors"], 26)
+        self.assertEqual(details["unique_external_ids"], 26)
+        self.assertEqual(details["profiles_requested"], 26)
+        self.assertEqual(details["profiles_failed"], 0)
+        self.assertEqual(details["links_discarded"], [])
+        self.assertEqual(details["requested_url"], details["final_url"])
+
+    def test_nested_names_duplicates_and_explicit_limit_are_diagnosed(self):
+        scraper = TransfermarktScraper(pause_seconds=0)
+        roster = BeautifulSoup(
+            '<h1>Inter</h1>'
+            '<a href="/one/profil/spieler/1"><span>Uno</span></a>'
+            '<a href="/duplicate/profil/spieler/1">Uno duplicato</a>'
+            '<a href="/two/profil/spieler/2"><span>Due</span></a>'
+            '<a href="/three/profil/spieler/3">Tre</a>',
+            "lxml",
+        )
+        profile = BeautifulSoup(
+            "Squadra attuale: Inter Nato il: 01/01/2000 "
+            "Nazionalità: Italia Posizione: Portiere",
+            "lxml",
+        )
+        with patch.object(scraper, "parse_page", side_effect=[roster, profile, profile]):
+            players, details = scraper.get_players_for_club("/inter/kader/verein/46/saison_id/2026", 2)
+        self.assertEqual([player["full_name"] for player in players], ["Uno", "Due"])
+        self.assertEqual(details["profiles_requested"], 2)
+        self.assertEqual(details["unique_external_ids"], 3)
+        self.assertEqual(
+            [item["reason"] for item in details["links_discarded"]],
+            ["duplicate", "limit_reached"],
+        )
+
     def test_http_client_is_injectable_and_errors_are_raised(self):
         client = Mock()
         client.get.side_effect = requests.ConnectionError("offline")
