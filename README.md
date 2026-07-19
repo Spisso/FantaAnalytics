@@ -113,11 +113,13 @@ Avvio dello stack applicativo:
 
 ```bash
 make stack-up
-docker compose exec analytics alembic upgrade head
 make api-health
-make api-migrate
 make api-seed-demo
 ```
+
+`make stack-up` inizializza in ordine PostgreSQL e Analytics, applica Alembic,
+avvia Laravel e applica le migrazioni del database applicativo. Il seed resta
+un'operazione separata e idempotente.
 
 Laravel è pubblicato su `http://localhost:8081` perché la porta 8080 può essere già occupata localmente. `ANALYTICS_BASE_URL=http://analytics:8000` è usato solo sulla rete Docker. Vue non è ancora iniziato.
 

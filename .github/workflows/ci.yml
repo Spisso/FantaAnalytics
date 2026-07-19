@@ -26,10 +26,15 @@ jobs:
       - run: make api-test
       - run: docker compose config --quiet
       - run: docker compose build
-      - run: docker compose up -d postgres analytics api
-      - run: docker compose exec -T analytics alembic upgrade head
-      - run: make api-migrate
+      - run: make stack-up
       - run: make api-seed-demo
       - run: docker compose exec -T analytics python -m services.analytics.fantaanalytics.cli import-players --file data/samples/demo_players.csv --source demo --season 2026-27
       - run: curl --retry 12 --retry-connrefused --fail http://localhost:8081/api/v1/analytics/status
       - run: curl --fail "http://localhost:8081/api/v1/players?season=2026-27"
+      - name: Docker diagnostics
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --no-color --tail=200 postgres
+          docker compose logs --no-color --tail=200 analytics
+          docker compose logs --no-color --tail=200 api

@@ -13,18 +13,25 @@ from alembic import command as alembic_command
 from alembic.config import Config as AlembicConfig
 
 from .import_service import PlayerImportService
-from .importer import import_csv
+from .importer import import_csv, normalize_row
 from .persistence import CanonicalRepository, MigrationRunner
 from .pricing import LeagueConfig, predict_prices
 from .scoring import score_players
 from .settings import Settings
-from .transfermarkt_adapter import write_canonical_csv
+from .transfermarkt_adapter import canonicalize_players, write_canonical_csv
 
 DEFAULT_DATABASE = Settings.from_env().database_url
 
 
 def _print_json(value: Dict[str, Any]) -> None:
     print(json.dumps(value, ensure_ascii=False, sort_keys=True, default=str))
+
+
+def _positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("il valore deve essere almeno 1")
+    return parsed
 
 
 def run_score(source: str, destination: str) -> int:
@@ -102,13 +109,35 @@ def run_scrape_transfermarkt(args: argparse.Namespace) -> int:
         retries=args.retries,
     )
     try:
-        players = scraper.get_players()
+        players = scraper.get_players(max_clubs=args.max_clubs, max_players=args.max_players)
     except requests.RequestException as exc:
         # Requests errors are intentionally converted at this adapter boundary: no CAPTCHA or
         # access-control fallback is attempted.
         raise RuntimeError(f"Transfermarkt non raggiungibile o accesso rifiutato: {exc}") from exc
     if not players:
         raise RuntimeError("Transfermarkt non ha restituito giocatori; import non eseguito")
+
+    rows = canonicalize_players(players)
+    print(f"Squadre individuate: {scraper.discovered_club_count}")
+    print(f"Squadre elaborate: {', '.join(scraper.processed_clubs) or 'nessuna'}")
+    print(f"Profili richiesti: {scraper.requested_profile_count}")
+    for error in scraper.profile_errors:
+        print(f"Errore profilo {error['profile_url']}: {error['error']}")
+
+    if args.dry_run:
+        errors = []
+        for row_number, row in enumerate(rows, start=2):
+            try:
+                normalize_row(row, row_number)
+            except ValueError as exc:
+                errors.append((row_number, str(exc)))
+        if args.output:
+            csv_path, _ = write_canonical_csv(players, Path(args.output))
+            print(f"CSV canonico: {csv_path}")
+        print(f"Dry run: {len(rows) - len(errors)} record validi; {len(errors)} errori")
+        for row_number, message in errors:
+            print(f"Riga {row_number}: {message}")
+        return 0 if not errors else 1
 
     temporary = None
     if args.output:
@@ -222,6 +251,9 @@ def main(argv=None) -> int:
     scraped.add_argument("--force", action="store_true")
     scraped.add_argument("--pause", type=float, default=1.0)
     scraped.add_argument("--retries", type=int, default=2)
+    scraped.add_argument("--max-clubs", type=_positive_int)
+    scraped.add_argument("--max-players", type=_positive_int)
+    scraped.add_argument("--dry-run", action="store_true")
     scraped.set_defaults(handler=run_scrape_transfermarkt)
     listed = subparsers.add_parser("list-players", help="Elenca i giocatori canonici importati")
     listed.add_argument("--database", default=DEFAULT_DATABASE)

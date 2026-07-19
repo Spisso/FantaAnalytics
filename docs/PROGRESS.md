@@ -40,7 +40,8 @@ Import Serie A tramite fixture/mock completato; verifica live separata. Vue rest
 
 ## Tests last executed
 
-- `make test` — 36 test superati, inclusi adapter/scraper senza richieste HTTP reali.
+- preview live controllata Transfermarkt — 1 club, 3 profili, 3 record validi, nessun campo mancante e nessuna persistenza.
+- `make test` — 42 test superati, inclusi limiti/dry-run scraper senza richieste HTTP reali.
 - `make db-upgrade DATABASE=/private/tmp/fantaanalytics-accept.test.db` — migrazione `001` applicata.
 - `make import-sample DATABASE=/private/tmp/fantaanalytics-accept.test.db` — 11 player inseriti.
 - `make list-players DATABASE=/private/tmp/fantaanalytics-accept.test.db` — 11 player interrogati.
@@ -58,6 +59,7 @@ Import Serie A tramite fixture/mock completato; verifica live separata. Vue rest
 - build Docker Analytics/Laravel e `make stack-test` — superati nella revisione finale.
 - import Transfermarkt con mock nel container su PostgreSQL temporaneo — 1 player inserito, CSV raw scrivibile e cleanup completato.
 - `api-db-create` — creazione e seconda esecuzione idempotente verificate con `fantaanalytics_app_codex_test`, poi rimosso.
+- cold start Compose su progetto/volume isolati — bootstrap ordinato, migrazioni, seed/import demo ed endpoint verificati; cleanup completato.
 
 ## Known limitations
 
