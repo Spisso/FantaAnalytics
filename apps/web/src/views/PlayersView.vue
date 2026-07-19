@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type Player, type Team } from '../services/api'
+import { sortPlayersByRoleSurnameAndName } from '../playerSorting'
 import { orderTeamsForPlayers, selectInitialTeam } from '../teamSelection'
 
 const season = '2026-27'
@@ -15,7 +16,8 @@ const playerError = ref('')
 
 const visiblePlayers = computed(() => {
   const needle = search.value.trim().toLocaleLowerCase('it-IT')
-  return needle ? players.value.filter((player) => player.canonical_full_name.toLocaleLowerCase('it-IT').includes(needle)) : players.value
+  const filtered = needle ? players.value.filter((player) => player.canonical_full_name.toLocaleLowerCase('it-IT').includes(needle)) : players.value
+  return sortPlayersByRoleSurnameAndName(filtered)
 })
 
 function ageFromBirthDate(date?: string | null) {
@@ -65,7 +67,7 @@ onMounted(loadTeams)
       <div class="team-tabs" role="tablist" aria-label="Squadre">
         <button v-for="team in teams" :key="team.name" :class="['team-tab', { active: selectedTeam === team.name }]" role="tab" :aria-selected="selectedTeam === team.name" @click="selectedTeam = team.name"><span v-if="team.name === 'Napoli'" aria-hidden="true">💙 </span>{{ team.name }} <small>{{ team.player_count }}</small></button>
       </div>
-      <div class="toolbar"><label class="search-box"><span>⌕</span><input v-model="search" type="search" placeholder="Cerca per nome..." aria-label="Cerca giocatore" /></label><span class="selected-team">{{ selectedTeam }}</span></div>
+      <div class="toolbar"><label class="search-box"><span>⌕</span><input v-model="search" type="search" placeholder="Cerca per nome..." aria-label="Cerca giocatore" /></label><div><small>Ordinamento: ruolo, cognome, nome</small><span class="selected-team">{{ selectedTeam }}</span></div></div>
       <div v-if="loadingPlayers" class="state-message">Caricamento giocatori...</div>
       <div v-else-if="playerError" class="state-message error-state"><p>{{ playerError }}</p><button class="button button-muted" @click="loadPlayers">Riprova</button></div>
       <div v-else-if="!visiblePlayers.length" class="state-message">Nessun giocatore trovato per questa ricerca.</div>
