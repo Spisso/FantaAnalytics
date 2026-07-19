@@ -62,12 +62,13 @@ Import Serie A tramite fixture/mock completato; verifica live separata. Vue rest
 - import Transfermarkt con mock nel container su PostgreSQL temporaneo — 1 player inserito, CSV raw scrivibile e cleanup completato.
 - stack isolato `fantaanalytics_real` — import reale Inter stagione 2026-27 completato con 12 player, 12 external ID Transfermarkt unici, nessun demo e date ISO valide; endpoint teams/players verificati.
 - validazione scraper Inter — diagnosi: 25 anchor profilo e 25 external ID unici nella pagina `/kader/verein/46/saison_id/2026`; i 13 scarti iniziali erano ruoli non mappati. Dopo la correzione: 25 player importati, zero errori e API verificata.
+- import progressivo Serie A — 20 squadre completate, 658 player persistiti, zero duplicati e zero campi obbligatori mancanti; un ruolo aggiuntivo (`Attacco`) è stato mappato e Venezia è stata ritentata con successo.
 - `api-db-create` — creazione e seconda esecuzione idempotente verificate con `fantaanalytics_app_codex_test`, poi rimosso.
 - cold start Compose su progetto/volume isolati — bootstrap ordinato, migrazioni, seed/import demo ed endpoint verificati; cleanup completato.
 
 ## Known limitations
 
-- Il listino demo è intenzionalmente ridotto e fittizio; la rosa reale verificata copre per ora la sola Inter e l’import delle altre squadre non è ancora stato eseguito.
+- Il listino demo è intenzionalmente ridotto e fittizio; il dataset Transfermarkt reale verificato copre le 20 squadre dello snapshot 2026-27.
 - Il prezzo è una baseline deterministica, non un modello addestrato né una raccomandazione d'asta live.
 - Vue, autenticazione e dominio leghe/aste/rose non sono ancora implementati.
 - SQLite è il backend locale/test; PostgreSQL è il backend Docker verificato.
@@ -78,4 +79,4 @@ Import Serie A tramite fixture/mock completato; verifica live separata. Vue rest
 
 ## Exact next action
 
-Collegare/verificare la vista Vue alle rose reali dello stack isolato, poi estendere l’import alle altre squadre solo dopo una verifica analoga.
+Completare la verifica visuale della vista Vue sulle 20 rose quando sarà disponibile una superficie browser; il dev server è già avviato sulla porta 5173.
