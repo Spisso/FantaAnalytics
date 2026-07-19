@@ -129,6 +129,26 @@ rose. `VITE_API_BASE_URL` configura il gateway (default:
 e i giocatori vengono richiesti con il filtro `team`, senza scaricare l'intero
 campionato nel browser. Per una verifica di produzione locale usa `make web-build`.
 
+Per avviare il frontend da un altro dispositivo della rete locale, sostituisci
+`<IP_DEL_MAC>` con l'indirizzo IP corrente del Mac:
+
+```bash
+export COMPOSE_PROJECT_NAME=fantaanalytics_real
+export POSTGRES_PORT=55432
+export ANALYTICS_API_PORT=18000
+export API_PORT=18081
+export CORS_ALLOWED_ORIGINS="http://localhost:5173,http://<IP_DEL_MAC>:5173"
+export API_CACHE_STORE=file
+docker compose up -d --force-recreate --no-deps api
+
+cd apps/web
+printf 'VITE_API_BASE_URL=http://<IP_DEL_MAC>:18081/api/v1\n' > .env.local
+npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
+```
+
+Il file `apps/web/.env.local` è locale e ignorato da Git. La cache API usa il
+filesystem e non richiede la tabella PostgreSQL `cache`.
+
 Nel CSV e nel contratto canonico `profile_url` è esposto come `source_url`. Viene
 persistito in `player_source_mappings` insieme all'external ID, mentre non è duplicato
 nella tabella `players` e non è incluso oggi nella risposta della read API. Il valore di
