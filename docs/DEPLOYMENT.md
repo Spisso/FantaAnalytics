@@ -1,14 +1,17 @@
 # Deployment
 
-Il Compose locale avvia PostgreSQL 16, Analytics Gunicorn e Laravel 12. Prima del traffico applicare esplicitamente Alembic:
+Il Compose locale avvia PostgreSQL 16, Analytics Gunicorn e Laravel 12. Il target
+`stack-up` gestisce l'ordine di bootstrap anche con volumi PostgreSQL vuoti:
 
 ```bash
 docker compose build
-docker compose up -d postgres analytics api
-docker compose exec analytics alembic upgrade head
+make stack-up
 ```
 
-`/health` è liveness e risponde 200 finché il processo è vivo. `/ready` verifica connessione, schema canonico e revisione Alembic; il healthcheck del container usa `/ready`.
+`stack-up` avvia prima PostgreSQL e Analytics, applica Alembic, poi avvia Laravel
+e migra il database applicativo. `/health` è liveness e risponde 200 finché il
+processo è vivo. `/ready` verifica connessione, schema canonico e revisione
+Alembic; il healthcheck del container usa `/ready`.
 
 Per fermare senza perdere dati usare `docker compose stop`, oppure `docker compose down`: il volume nominato resta presente. Il reset distruttivo ed esplicito è `docker compose down -v`; rimuove il volume PostgreSQL e richiede una nuova migrazione/importazione.
 

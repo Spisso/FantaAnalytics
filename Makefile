@@ -95,14 +95,15 @@ api-seed-demo: api-migrate
 	docker compose exec -T api php artisan db:seed --force
 
 stack-up:
-	docker compose up -d postgres analytics api
+	docker compose up -d postgres analytics
+	docker compose exec -T analytics alembic upgrade head
+	docker compose up -d api
+	$(MAKE) api-migrate
 
 stack-down:
 	docker compose down
 
 stack-test: stack-up
-	docker compose exec analytics alembic upgrade head
-	$(MAKE) api-migrate
 	docker compose exec analytics python -m services.analytics.fantaanalytics.cli import-players --file data/samples/demo_players.csv --source demo --season 2026-27
 	curl --fail http://localhost:$${ANALYTICS_API_PORT:-8000}/health
 	curl --fail http://localhost:$${ANALYTICS_API_PORT:-8000}/ready

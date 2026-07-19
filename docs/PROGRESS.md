@@ -59,6 +59,7 @@ Import Serie A tramite fixture/mock completato; verifica live separata. Vue rest
 - build Docker Analytics/Laravel e `make stack-test` — superati nella revisione finale.
 - import Transfermarkt con mock nel container su PostgreSQL temporaneo — 1 player inserito, CSV raw scrivibile e cleanup completato.
 - `api-db-create` — creazione e seconda esecuzione idempotente verificate con `fantaanalytics_app_codex_test`, poi rimosso.
+- cold start Compose su progetto/volume isolati — bootstrap ordinato, migrazioni, seed/import demo ed endpoint verificati; cleanup completato.
 
 ## Known limitations
 
