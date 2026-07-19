@@ -136,7 +136,10 @@ def run_progressive_scrape(args):
                 validation_errors = len(issues)
                 if not args.dry_run:
                     import_result = import_service.import_file(
-                        temporary_csv, "transfermarkt", args.season, force=args.force
+                        temporary_csv,
+                        "transfermarkt",
+                        args.season,
+                        force=args.force or args.retry_failed,
                     )
             if import_result:
                 summary["inserted_players"] += import_result.inserted_rows

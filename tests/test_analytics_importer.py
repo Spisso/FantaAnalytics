@@ -28,6 +28,7 @@ class NormalizationTest(unittest.TestCase):
         self.assertEqual(infer_fantasy_role("Mediano"), "C")
         self.assertEqual(infer_fantasy_role("Centrocampista"), "C")
         self.assertEqual(infer_fantasy_role("Esterno di destra"), "A")
+        self.assertEqual(infer_fantasy_role("Attacco"), "A")
 
 
 class CsvImporterTest(unittest.TestCase):

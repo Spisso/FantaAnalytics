@@ -33,6 +33,7 @@ ROLE_MAPPING = {
     "centre-forward": "A",
     "punta centrale": "A",
     "attaccante": "A",
+    "attacco": "A",
 }
 
 
