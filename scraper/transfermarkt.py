@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 class TransfermarktScraper:
     BASE_URL = "https://www.transfermarkt.it"
     PLAYER_ID_PATTERN = re.compile(r"/profil/spieler/(\d+)(?:[/?#]|$)")
+    CLUB_ID_PATTERN = re.compile(r"/kader/verein/(\d+)(?:[/?#]|$)")
 
     def __init__(self, season=None, http_client=None, pause_seconds=1.0, retries=2, sleeper=None):
         season_path = f"/saison_id/{str(season).split('-', 1)[0]}" if season else ""
@@ -34,6 +35,11 @@ class TransfermarktScraper:
         absolute = urljoin(cls.BASE_URL, profile_url or "")
         parts = urlsplit(absolute)
         return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+
+    @classmethod
+    def extract_club_id(cls, roster_url):
+        match = cls.CLUB_ID_PATTERN.search(roster_url or "")
+        return f"transfermarkt-club:{match.group(1)}" if match else None
 
     def get_page(self, url=None):
         if self._request_count and self.pause_seconds:
@@ -67,6 +73,70 @@ class TransfermarktScraper:
             if href and href not in urls:
                 urls.append(href)
         return urls
+
+    def get_club_descriptors(self):
+        soup = self.parse_page()
+        descriptors = []
+        seen = set()
+        for link in soup.select('a[href*="/kader/verein/"]'):
+            href = link.get("href")
+            club_id = self.extract_club_id(href)
+            if not href or not club_id or club_id in seen:
+                continue
+            seen.add(club_id)
+            name = link.get_text(" ", strip=True) or href.rsplit("/", 1)[-1]
+            descriptors.append(
+                {
+                    "external_id": club_id,
+                    "name": name,
+                    "roster_url": self.canonical_roster_url(href),
+                }
+            )
+        return descriptors
+
+    @classmethod
+    def canonical_roster_url(cls, roster_url):
+        absolute = urljoin(cls.BASE_URL, roster_url or "")
+        parts = urlsplit(absolute)
+        return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+
+    def get_players_for_club(self, roster_url, max_players=None):
+        roster_soup = self.parse_page(self.canonical_roster_url(roster_url))
+        team_name = self._extract_team_name(roster_soup)
+        candidates = {}
+        for link in roster_soup.select('a[href*="/profil/spieler/"]'):
+            profile_url = self.canonical_profile_url(link.get("href"))
+            external_id = self.extract_external_id(profile_url)
+            full_name = link.get_text(" ", strip=True)
+            if external_id and full_name and external_id not in candidates:
+                candidates[external_id] = (full_name, profile_url, team_name)
+                if max_players is not None and len(candidates) >= max_players:
+                    break
+        players = []
+        errors = []
+        for external_id, (full_name, profile_url, roster_team) in candidates.items():
+            self.requested_profile_count += 1
+            try:
+                player_soup = self.parse_page(profile_url)
+            except requests.RequestException as exc:
+                error = {"profile_url": profile_url, "error": str(exc)}
+                self.profile_errors.append(error)
+                errors.append(error)
+                continue
+            players.append(
+                {
+                    "external_id": external_id,
+                    "profile_url": profile_url,
+                    "full_name": full_name,
+                    "team": self._extract_profile_field(player_soup, "Squadra attuale")
+                    or roster_team,
+                    "birth_date": self._extract_birth_date(player_soup),
+                    "source_role": self._extract_profile_field(player_soup, "Posizione"),
+                    "nationality": self._extract_profile_field(player_soup, "Nazionalità"),
+                    "market_value": self._extract_market_value(player_soup),
+                }
+            )
+        return players, {"discovered": len(candidates), "errors": errors, "team": team_name}
 
     def get_players(self, max_clubs=None, max_players=None):
         self.discovered_club_count = 0

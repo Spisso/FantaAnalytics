@@ -68,6 +68,42 @@ python -m services.analytics.fantaanalytics.cli list-players \
   --database data/processed/fantaanalytics.db --season 2026-27
 ```
 
+Per un import riprendibile per squadra usa il checkpoint versionato (salvato di
+default in `data/raw`, ignorato da Git):
+
+```bash
+python -m services.analytics.fantaanalytics.cli scrape-transfermarkt \
+  --season 2026-27 --database data/processed/fantaanalytics.db \
+  --resume --checkpoint data/raw/transfermarkt_2026-27_checkpoint.json \
+  --continue-on-error
+```
+
+`--club` seleziona una squadra, `--start-club` riparte da una squadra inclusa,
+`--retry-failed` ritenta esclusivamente le squadre fallite e `--max-clubs` /
+`--max-players` limitano una sessione. Ogni squadra completata viene registrata
+nel checkpoint con external ID, roster, contatori e timestamp; i fallimenti
+conservano errore e numero di tentativi. La scrittura del checkpoint è atomica.
+`--dry-run` non crea né aggiorna database o checkpoint; con `--output` produce
+solo il CSV della sessione.
+
+Esempi di esecuzione mirata:
+
+```bash
+# una sola squadra, identificata da nome o external ID
+python -m services.analytics.fantaanalytics.cli scrape-transfermarkt \
+  --season 2026-27 --database data/processed/fantaanalytics.db --club inter
+
+# ritenta esclusivamente le squadre fallite
+python -m services.analytics.fantaanalytics.cli scrape-transfermarkt \
+  --season 2026-27 --database data/processed/fantaanalytics.db \
+  --resume --retry-failed --continue-on-error
+
+# preview senza persistenza, con CSV esplicito
+python -m services.analytics.fantaanalytics.cli scrape-transfermarkt \
+  --season 2026-27 --database /tmp/unused.db --max-clubs 1 \
+  --max-players 3 --dry-run --output data/raw/transfermarkt_preview.csv
+```
+
 Con Docker, lo stesso target esegue migrazione e import dentro il container Analytics:
 
 ```bash

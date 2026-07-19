@@ -18,6 +18,42 @@ class TransfermarktScraperTest(unittest.TestCase):
             "https://www.transfermarkt.it/lautaro/profil/spieler/406625",
         )
 
+    def test_extracts_unique_club_descriptors(self):
+        scraper = TransfermarktScraper(pause_seconds=0)
+        league = BeautifulSoup(
+            '<a href="/inter/kader/verein/46/saison_id/2026">Inter</a>'
+            '<a href="/duplicate/kader/verein/46">Inter duplicate</a>'
+            '<a href="/roma/kader/verein/ROMA">Invalid</a>',
+            "lxml",
+        )
+        with patch.object(scraper, "parse_page", return_value=league):
+            clubs = scraper.get_club_descriptors()
+        self.assertEqual(len(clubs), 1)
+        self.assertEqual(clubs[0]["external_id"], "transfermarkt-club:46")
+        self.assertEqual(
+            clubs[0]["roster_url"],
+            "https://www.transfermarkt.it/inter/kader/verein/46/saison_id/2026",
+        )
+
+    def test_get_players_for_club_stops_profile_requests_at_limit(self):
+        scraper = TransfermarktScraper(pause_seconds=0)
+        roster = BeautifulSoup(
+            '<h1>Inter</h1>'
+            '<a href="/one/profil/spieler/1">Uno</a>'
+            '<a href="/two/profil/spieler/2">Due</a>'
+            '<a href="/three/profil/spieler/3">Tre</a>',
+            "lxml",
+        )
+        profile = BeautifulSoup(
+            "Squadra attuale: Inter Nato il: 01/01/2000 Nazionalità: Italia Posizione: Portiere",
+            "lxml",
+        )
+        with patch.object(scraper, "parse_page", side_effect=[roster, profile]) as parser:
+            players, details = scraper.get_players_for_club("/inter/kader/verein/46", 1)
+        self.assertEqual(len(players), 1)
+        self.assertEqual(details["discovered"], 1)
+        self.assertEqual(scraper.requested_profile_count, 1)
+        self.assertEqual(parser.call_count, 2)
     def test_get_players_deduplicates_profile_before_fetch(self):
         scraper = TransfermarktScraper(pause_seconds=0)
         roster = BeautifulSoup(

@@ -32,6 +32,7 @@ Import Serie A tramite fixture/mock completato; verifica live separata. Vue rest
 - [x] Adapter CSV canonico e comando `scrape-transfermarkt` con import SQLAlchemy idempotente.
 - [x] `main.py`, Makefile e container Analytics usano la pipeline canonica, non il DB legacy.
 - [x] Prima interfaccia Vue con landing, esplorazione giocatori per squadra e gateway `/api/v1/teams`.
+- [x] Import Transfermarkt progressivo per squadra con checkpoint atomico, resume, retry dei fallimenti e selezione per club.
 
 ## Remaining
 
@@ -42,7 +43,7 @@ Import Serie A tramite fixture/mock completato; verifica live separata. Vue rest
 ## Tests last executed
 
 - preview live controllata Transfermarkt — 1 club, 3 profili, 3 record validi, nessun campo mancante e nessuna persistenza.
-- `make test` — 42 test superati, inclusi limiti/dry-run scraper senza richieste HTTP reali.
+- `make test` — 52 test superati, inclusi checkpoint/resume/retry progressivi e limiti/dry-run senza richieste HTTP reali.
 - `make db-upgrade DATABASE=/private/tmp/fantaanalytics-accept.test.db` — migrazione `001` applicata.
 - `make import-sample DATABASE=/private/tmp/fantaanalytics-accept.test.db` — 11 player inseriti.
 - `make list-players DATABASE=/private/tmp/fantaanalytics-accept.test.db` — 11 player interrogati.
@@ -71,6 +72,7 @@ Import Serie A tramite fixture/mock completato; verifica live separata. Vue rest
 - Lo scraping live dipende da raggiungibilità, termini e markup Transfermarkt; CAPTCHA e controlli di accesso non vengono aggirati.
 - `database/transfermarkt.db` non è presente nell'indice Git; `database/*.db`, `*.sqlite3` e `data/raw/*` restano ignorati.
 - Il frontend è avviabile localmente su porta 5173; i campi market value e URL sorgente non sono presenti nella lista API corrente.
+- Il checkpoint progressivo è locale e non viene versionato; `--dry-run` non persiste né checkpoint né dati canonici.
 
 ## Exact next action
 

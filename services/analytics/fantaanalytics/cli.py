@@ -19,6 +19,7 @@ from .pricing import LeagueConfig, predict_prices
 from .scoring import score_players
 from .settings import Settings
 from .transfermarkt_adapter import canonicalize_players, write_canonical_csv
+from .transfermarkt_progressive import run_progressive_scrape
 
 DEFAULT_DATABASE = Settings.from_env().database_url
 
@@ -101,6 +102,32 @@ def run_import(args: argparse.Namespace) -> int:
 
 
 def run_scrape_transfermarkt(args: argparse.Namespace) -> int:
+    if any(
+        [
+            args.resume,
+            args.checkpoint,
+            args.club,
+            args.start_club,
+            args.retry_failed,
+            args.continue_on_error,
+        ]
+    ):
+        summary = run_progressive_scrape(args)
+        print(f"Squadre individuate: {summary['clubs_discovered']}")
+        print(f"Squadre considerate: {summary['clubs_considered']}")
+        print(f"Squadre completate: {summary['clubs_completed']}")
+        print(f"Squadre saltate: {summary['clubs_skipped']}")
+        print(f"Squadre fallite: {summary['clubs_failed']}")
+        print(f"Profili richiesti: {summary['profiles_requested']}")
+        print(f"Giocatori validi: {summary['valid_players']}")
+        print(f"Giocatori inseriti: {summary['inserted_players']}")
+        print(f"Giocatori aggiornati: {summary['updated_players']}")
+        print(f"Giocatori saltati: {summary['skipped_players']}")
+        print(f"Errori: {len(summary['errors'])}")
+        for error in summary["errors"]:
+            print(f"Errore squadra {error['name']}: {error['error']}")
+        print(f"Checkpoint: {summary['checkpoint']}")
+        return 0 if not summary["errors"] else 1
     from scraper.transfermarkt import TransfermarktScraper
 
     scraper = TransfermarktScraper(
@@ -254,6 +281,12 @@ def main(argv=None) -> int:
     scraped.add_argument("--max-clubs", type=_positive_int)
     scraped.add_argument("--max-players", type=_positive_int)
     scraped.add_argument("--dry-run", action="store_true")
+    scraped.add_argument("--resume", action="store_true")
+    scraped.add_argument("--checkpoint")
+    scraped.add_argument("--club")
+    scraped.add_argument("--start-club")
+    scraped.add_argument("--retry-failed", action="store_true")
+    scraped.add_argument("--continue-on-error", action="store_true")
     scraped.set_defaults(handler=run_scrape_transfermarkt)
     listed = subparsers.add_parser("list-players", help="Elenca i giocatori canonici importati")
     listed.add_argument("--database", default=DEFAULT_DATABASE)
