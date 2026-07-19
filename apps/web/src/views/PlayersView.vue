@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type Player, type Team } from '../services/api'
+import { orderTeamsForPlayers, selectInitialTeam } from '../teamSelection'
 
 const season = '2026-27'
 const teams = ref<Team[]>([])
@@ -36,8 +37,8 @@ function formatDate(date?: string | null) {
 async function loadTeams() {
   loadingTeams.value = true; error.value = ''
   try {
-    teams.value = (await api.teams(season)).data
-    selectedTeam.value = teams.value[0]?.name || ''
+    teams.value = orderTeamsForPlayers((await api.teams(season)).data)
+    selectedTeam.value = selectInitialTeam(teams.value)
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : 'Impossibile caricare i dati.'
   } finally { loadingTeams.value = false }
@@ -62,7 +63,7 @@ onMounted(loadTeams)
     <div v-else-if="error" class="state-message error-state"><p>{{ error }}</p><button class="button button-muted" @click="loadTeams">Riprova</button></div>
     <template v-else>
       <div class="team-tabs" role="tablist" aria-label="Squadre">
-        <button v-for="team in teams" :key="team.name" :class="['team-tab', { active: selectedTeam === team.name }]" role="tab" :aria-selected="selectedTeam === team.name" @click="selectedTeam = team.name">{{ team.name }} <small>{{ team.player_count }}</small></button>
+        <button v-for="team in teams" :key="team.name" :class="['team-tab', { active: selectedTeam === team.name }]" role="tab" :aria-selected="selectedTeam === team.name" @click="selectedTeam = team.name"><span v-if="team.name === 'Napoli'" aria-hidden="true">💙 </span>{{ team.name }} <small>{{ team.player_count }}</small></button>
       </div>
       <div class="toolbar"><label class="search-box"><span>⌕</span><input v-model="search" type="search" placeholder="Cerca per nome..." aria-label="Cerca giocatore" /></label><span class="selected-team">{{ selectedTeam }}</span></div>
       <div v-if="loadingPlayers" class="state-message">Caricamento giocatori...</div>
