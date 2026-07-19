@@ -112,6 +112,16 @@ class AnalyticsClient
         return AnalyticsPlayerList::fromArray($this->request('/api/v1/players', $filters->toQuery()));
     }
 
+    public function teams(?string $season = null): array
+    {
+        $payload = $this->request('/api/v1/teams', array_filter(['season' => $season]));
+        if (! isset($payload['data'], $payload['count']) || ! is_array($payload['data'])) {
+            throw new AnalyticsException('ANALYTICS_INVALID_RESPONSE', 502, 'Risposta analytics non valida.');
+        }
+
+        return $payload;
+    }
+
     public function player(string $id): AnalyticsPlayer
     {
         $payload = $this->request('/api/v1/players/'.rawurlencode($id));

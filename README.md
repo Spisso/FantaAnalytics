@@ -78,6 +78,21 @@ make import-serie-a IMPORT_RUNTIME=docker
 I giocatori sono consultabili su `http://localhost:8000/api/v1/players?season=2026-27`
 e tramite Laravel su `http://localhost:8081/api/v1/players?season=2026-27`.
 
+### Interfaccia web
+
+La prima interfaccia Vue è in `apps/web` e usa Laravel come gateway HTTP:
+
+```bash
+make web-install
+make web-dev
+```
+
+Apri `http://localhost:5173/` per la landing oppure `/players` per esplorare le
+rose. `VITE_API_BASE_URL` configura il gateway (default:
+`http://localhost:8081/api/v1`). Le squadre vengono caricate da `/api/v1/teams`
+e i giocatori vengono richiesti con il filtro `team`, senza scaricare l'intero
+campionato nel browser. Per una verifica di produzione locale usa `make web-build`.
+
 Nel CSV e nel contratto canonico `profile_url` è esposto come `source_url`. Viene
 persistito in `player_source_mappings` insieme all'external ID, mentre non è duplicato
 nella tabella `players` e non è incluso oggi nella risposta della read API. Il valore di

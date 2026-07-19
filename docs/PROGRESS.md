@@ -31,6 +31,7 @@ Import Serie A tramite fixture/mock completato; verifica live separata. Vue rest
 - [x] Scraper Transfermarkt con external ID stabile, URL deduplicate, pausa e retry limitati.
 - [x] Adapter CSV canonico e comando `scrape-transfermarkt` con import SQLAlchemy idempotente.
 - [x] `main.py`, Makefile e container Analytics usano la pipeline canonica, non il DB legacy.
+- [x] Prima interfaccia Vue con landing, esplorazione giocatori per squadra e gateway `/api/v1/teams`.
 
 ## Remaining
 
@@ -69,6 +70,7 @@ Import Serie A tramite fixture/mock completato; verifica live separata. Vue rest
 - SQLite è il backend locale/test; PostgreSQL è il backend Docker verificato.
 - Lo scraping live dipende da raggiungibilità, termini e markup Transfermarkt; CAPTCHA e controlli di accesso non vengono aggirati.
 - `database/transfermarkt.db` non è presente nell'indice Git; `database/*.db`, `*.sqlite3` e `data/raw/*` restano ignorati.
+- Il frontend è avviabile localmente su porta 5173; i campi market value e URL sorgente non sono presenti nella lista API corrente.
 
 ## Exact next action
 

@@ -5,6 +5,7 @@
     "/health": {"get": {"responses": {"200": {"description": "Processo analytics vivo"}}}},
     "/ready": {"get": {"responses": {"200": {"description": "Database e schema pronti"}, "503": {"description": "Database o schema non pronti"}}}},
     "/api/v1/players": {"get": {"parameters": [{"name": "role", "in": "query"}, {"name": "team", "in": "query"}, {"name": "season", "in": "query"}], "responses": {"200": {"description": "Giocatori paginati"}}}},
+    "/api/v1/teams": {"get": {"parameters": [{"name": "season", "in": "query"}], "responses": {"200": {"description": "Squadre distinte con conteggio giocatori"}}}},
     "/api/v1/players/{id}": {"get": {"parameters": [{"name": "id", "in": "path", "required": true}], "responses": {"200": {"description": "Giocatore"}, "404": {"description": "Non trovato"}}}},
     "/api/v1/import-runs": {"get": {"responses": {"200": {"description": "Import run"}}}}
   }

@@ -62,6 +62,14 @@ class FantaAnalyticsApi:
             return self._response(
                 start_response, HTTPStatus.OK, {"data": players, "count": len(players)}
             )
+        if path == "/api/v1/teams":
+            season = query.get("season", [None])[0]
+            teams = self.repository.list_teams(season=season)
+            return self._response(
+                start_response,
+                HTTPStatus.OK,
+                {"data": teams, "count": len(teams), "season": season},
+            )
         if path.startswith("/api/v1/players/"):
             try:
                 player_id = int(path.rsplit("/", 1)[1])

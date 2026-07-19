@@ -9,6 +9,7 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/health', HealthController::class);
     Route::get('/analytics/status', [AnalyticsController::class, 'status']);
     Route::get('/players', [AnalyticsController::class, 'players']);
+    Route::get('/teams', [AnalyticsController::class, 'teams']);
     Route::get('/players/{id}', [AnalyticsController::class, 'player'])->whereNumber('id');
     Route::get('/import-runs', [AnalyticsController::class, 'importRuns']);
     Route::middleware('temporary.auth')->group(function (): void {

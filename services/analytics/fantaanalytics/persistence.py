@@ -430,10 +430,24 @@ class CanonicalRepository:
             clauses.append("t.season = ?")
             parameters.append(season)
         parameters.append(max(1, min(limit, 200)))
-        query = f"""SELECT p.id, p.canonical_full_name, p.birth_date, p.nationality, p.effective_fantasy_role,
+        query = f"""SELECT p.id, p.canonical_full_name, p.birth_date, p.nationality, p.source_role, p.effective_fantasy_role,
                             t.canonical_name AS team, t.season
                      FROM players p JOIN football_teams t ON t.id=p.current_team_id
                      WHERE {" AND ".join(clauses)} ORDER BY p.canonical_full_name LIMIT ?"""
+        with self._connect() as connection:
+            return [dict(row._mapping) for row in connection.execute(query, parameters).fetchall()]
+
+    def list_teams(self, season: Optional[str] = None) -> List[Dict[str, Any]]:
+        clauses = ["1=1"]
+        parameters: List[Any] = []
+        if season:
+            clauses.append("t.season = ?")
+            parameters.append(season)
+        query = f"""SELECT t.canonical_name AS name, COUNT(p.id) AS player_count
+                     FROM football_teams t LEFT JOIN players p ON p.current_team_id=t.id
+                     WHERE {" AND ".join(clauses)}
+                     GROUP BY t.id, t.canonical_name
+                     ORDER BY t.canonical_name"""
         with self._connect() as connection:
             return [dict(row._mapping) for row in connection.execute(query, parameters).fetchall()]
 

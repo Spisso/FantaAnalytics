@@ -47,6 +47,14 @@ class ReadApiTest(unittest.TestCase):
         self.assertEqual(status, "200 OK")
         self.assertEqual(players["count"], 3)
 
+    def test_teams_endpoint_returns_distinct_sorted_counts(self):
+        status, teams = self._get("/api/v1/teams", "season=2026-27")
+        self.assertEqual(status, "200 OK")
+        self.assertEqual(teams["season"], "2026-27")
+        self.assertEqual(teams["data"][0]["name"], "Atalanta")
+        self.assertEqual(teams["data"][0]["player_count"], 1)
+        self.assertEqual(teams["count"], 11)
+
     def test_player_detail_and_import_runs(self):
         status, player = self._get("/api/v1/players/1")
         self.assertEqual(status, "200 OK")

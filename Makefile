@@ -3,14 +3,14 @@ PYTHON ?= $(or $(wildcard .venv/bin/python),$(wildcard venv/bin/python),python3)
 DATABASE ?= data/processed/fantaanalytics.db
 IMPORT_RUNTIME ?= local
 
-.PHONY: help bootstrap test test-unit lint format seed-demo import-sample import-serie-a list-players db-upgrade db-downgrade db-reset-test score export clean api-install api-test api-lint api-up api-shell api-logs api-health api-db-create api-migrate api-migrate-fresh api-seed-demo stack-up stack-down stack-test
+.PHONY: help bootstrap test test-unit lint format seed-demo import-sample import-serie-a list-players db-upgrade db-downgrade db-reset-test score export clean api-install api-test api-lint api-up api-shell api-logs api-health api-db-create api-migrate api-migrate-fresh api-seed-demo stack-up stack-down stack-test web-install web-dev web-build
 
 USER_ID := $(shell id -u)
 GROUP_ID := $(shell id -g)
 COMPOSER_RUN = docker run --rm -u $(USER_ID):$(GROUP_ID) -v $(CURDIR)/apps/api:/app -w /app composer:2
 
 help:
-	@echo "Available targets: bootstrap test lint db-upgrade import-sample import-serie-a list-players seed-demo api-test api-lint stack-up stack-test"
+	@echo "Available targets: bootstrap test lint db-upgrade import-sample import-serie-a list-players seed-demo api-test api-lint web-install web-dev web-build stack-up stack-test"
 
 bootstrap:
 	$(PYTHON) -m venv .venv
@@ -68,6 +68,15 @@ api-test:
 api-lint:
 	@test -f apps/api/vendor/autoload.php || $(MAKE) api-install
 	apps/api/vendor/bin/pint --test
+
+web-install:
+	cd apps/web && npm install
+
+web-dev:
+	cd apps/web && npm run dev -- --host 0.0.0.0
+
+web-build:
+	cd apps/web && npm run build
 
 api-up:
 	docker compose up -d api

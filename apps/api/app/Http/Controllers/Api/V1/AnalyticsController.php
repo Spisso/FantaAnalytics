@@ -21,6 +21,11 @@ class AnalyticsController extends Controller
         return response()->json($this->analytics->players($request->filters())->toArray());
     }
 
+    public function teams(PlayerIndexRequest $request): JsonResponse
+    {
+        return response()->json($this->analytics->teams($request->validated('season')));
+    }
+
     public function player(string $id): JsonResponse
     {
         return response()->json(['data' => $this->analytics->player($id)->toArray()]);

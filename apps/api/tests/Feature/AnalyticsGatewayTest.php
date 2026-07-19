@@ -83,6 +83,21 @@ class AnalyticsGatewayTest extends TestCase
             && str_contains($request->url(), 'limit=10'));
     }
 
+    public function test_teams_are_proxied_with_season(): void
+    {
+        Http::fake(['*/api/v1/teams*' => Http::response([
+            'data' => [['name' => 'Inter', 'player_count' => 3]],
+            'count' => 1,
+            'season' => '2026-27',
+        ])]);
+
+        $this->getJson('/api/v1/teams?season=2026-27')
+            ->assertOk()
+            ->assertJsonPath('data.0.name', 'Inter')
+            ->assertJsonPath('data.0.player_count', 3);
+        Http::assertSent(fn ($request): bool => str_contains($request->url(), 'season=2026-27'));
+    }
+
     public function test_invalid_filters_return_422_without_calling_analytics(): void
     {
         Http::fake();
