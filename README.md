@@ -146,6 +146,38 @@ printf 'VITE_API_BASE_URL=http://<IP_DEL_MAC>:18081/api/v1\n' > .env.local
 npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
 ```
 
+### Installare come PWA
+
+La build web include manifest e service worker per installare FantaAnalytics:
+
+```bash
+cd apps/web
+npm run pwa:build
+```
+
+- Safari su iPhone: **Condividi → Aggiungi alla schermata Home**.
+- Chrome o Edge su desktop/Android: usa **Installa app** nella barra degli indirizzi o nel menu del browser.
+
+Il service worker precarica soltanto gli asset statici dell'app. Le API non usano
+cache runtime, così eventuali dati non aggiornati non vengono mostrati come correnti.
+
+### Avviare su iPhone
+
+```bash
+cd apps/web
+npm run build
+npx cap sync ios
+npx cap open ios
+```
+
+Per un dispositivo fisico, `localhost` indica il dispositivo stesso: imposta
+`VITE_API_BASE_URL=http://<IP_DEL_MAC>:18081/api/v1` in un file `.env.local` e
+usa l'IP corrente del Mac nella rete LAN. Non hardcodare IP personali o segreti.
+L'eccezione ATS presente nel progetto è limitata alla rete locale per lo sviluppo;
+la configurazione di produzione deve usare un endpoint HTTPS pubblico.
+
+Per Android sono disponibili `npm run cap:android` e `npm run cap:open:android`.
+
 Il file `apps/web/.env.local` è locale e ignorato da Git. La cache API usa il
 filesystem e non richiede la tabella PostgreSQL `cache`.
 

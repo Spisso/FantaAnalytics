@@ -122,6 +122,41 @@
         "group": "fantaanalytics"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "FantaAnalytics: Build App",
+      "type": "shell",
+      "command": "npm run pwa:build",
+      "options": { "cwd": "${workspaceFolder}/apps/web", "shell": { "executable": "/bin/zsh", "args": ["-l", "-c"] } },
+      "presentation": { "panel": "dedicated", "name": "FantaAnalytics Web Build", "reveal": "always", "group": "fantaanalytics" },
+      "problemMatcher": []
+    },
+    {
+      "label": "FantaAnalytics: Sync Capacitor",
+      "type": "shell",
+      "command": "npm run cap:sync",
+      "options": { "cwd": "${workspaceFolder}/apps/web", "shell": { "executable": "/bin/zsh", "args": ["-l", "-c"] } },
+      "presentation": { "panel": "dedicated", "name": "FantaAnalytics Capacitor", "reveal": "always", "group": "fantaanalytics" },
+      "problemMatcher": []
+    },
+    {
+      "label": "FantaAnalytics: Open iOS",
+      "type": "shell",
+      "command": "npm run cap:open:ios",
+      "dependsOn": ["FantaAnalytics: Build App", "FantaAnalytics: Sync Capacitor"],
+      "dependsOrder": "sequence",
+      "options": { "cwd": "${workspaceFolder}/apps/web", "shell": { "executable": "/bin/zsh", "args": ["-l", "-c"] } },
+      "presentation": { "panel": "dedicated", "name": "FantaAnalytics iOS", "reveal": "always", "group": "fantaanalytics" },
+      "problemMatcher": []
+    },
+    {
+      "label": "FantaAnalytics: Open Android",
+      "type": "shell",
+      "command": "npm run cap:open:android",
+      "dependsOn": "FantaAnalytics: Build App",
+      "options": { "cwd": "${workspaceFolder}/apps/web", "shell": { "executable": "/bin/zsh", "args": ["-l", "-c"] } },
+      "presentation": { "panel": "dedicated", "name": "FantaAnalytics Android", "reveal": "always", "group": "fantaanalytics" },
+      "problemMatcher": []
     }
   ]
 }

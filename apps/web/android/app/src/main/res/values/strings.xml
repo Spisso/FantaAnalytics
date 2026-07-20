@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FantaAnalytics</string>
+    <string name="title_activity_main">FantaAnalytics</string>
+    <string name="package_name">it.fantaanalytics.app</string>
+    <string name="custom_url_scheme">it.fantaanalytics.app</string>
+</resources>

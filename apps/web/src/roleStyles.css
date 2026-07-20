@@ -1,0 +1,98 @@
+:root {
+  --role-p-color: #a86f00;
+  --role-p-background: #fff3c4;
+  --role-p-border: #e6bf55;
+  --role-d-color: #18794e;
+  --role-d-background: #dff7ea;
+  --role-d-border: #63c99a;
+  --role-c-color: #2457a6;
+  --role-c-background: #e1edff;
+  --role-c-border: #78a8ef;
+  --role-a-color: #b4232d;
+  --role-a-background: #ffe3e5;
+  --role-a-border: #ed8790;
+  --role-unknown-color: #536176;
+  --role-unknown-background: #edf1f6;
+  --role-unknown-border: #c7d0dc;
+}
+
+.toolbar-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.sort-note {
+  color: #8792a5;
+  font-size: .75rem;
+}
+
+.role-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 10px;
+  color: #536176;
+  font-size: .75rem;
+}
+
+.role-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 .45rem;
+  border: 1px solid;
+  border-radius: 999px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.role-badge--p {
+  color: var(--role-p-color);
+  background: var(--role-p-background);
+  border-color: var(--role-p-border);
+}
+
+.role-badge--d {
+  color: var(--role-d-color);
+  background: var(--role-d-background);
+  border-color: var(--role-d-border);
+}
+
+.role-badge--c {
+  color: var(--role-c-color);
+  background: var(--role-c-background);
+  border-color: var(--role-c-border);
+}
+
+.role-badge--a {
+  color: var(--role-a-color);
+  background: var(--role-a-background);
+  border-color: var(--role-a-border);
+}
+
+.role-badge--unknown {
+  color: var(--role-unknown-color);
+  background: var(--role-unknown-background);
+  border-color: var(--role-unknown-border);
+}
+
+@media (max-width: 700px) {
+  .toolbar-summary {
+    align-items: stretch;
+  }
+
+  .role-legend {
+    justify-content: flex-start;
+  }
+}

@@ -14,4 +14,5 @@ import { RouterLink, RouterView } from 'vue-router'
   </header>
   <main><RouterView /></main>
   <footer class="site-footer">Dati e pipeline Analytics · stagione 2026-27</footer>
+  <PwaUpdatePrompt />
 </template>
